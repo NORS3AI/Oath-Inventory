@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List } from 'lucide-react';
+import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
 import OrderManagement from './OrderManagement';
 import QuickEditModal from './QuickEditModal';
 import ColumnReorderModal from './ColumnReorderModal';
+import ExclusionManager from './ExclusionManager';
 
 // Define all available columns
 const DEFAULT_COLUMNS = [
@@ -33,6 +34,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [selectedPeptide, setSelectedPeptide] = useState(null);
   const [quickEditPeptide, setQuickEditPeptide] = useState(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
+  const [showExclusionsModal, setShowExclusionsModal] = useState(false);
 
   // Load column order from settings
   useEffect(() => {
@@ -246,6 +248,15 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
             </select>
           </div>
 
+          {/* Exclusions Button */}
+          <button
+            onClick={() => setShowExclusionsModal(true)}
+            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+          >
+            <Ban className="w-4 h-4" />
+            <span className="hidden sm:inline">Exclusions</span>
+          </button>
+
           {/* Reorder Columns Button */}
           <button
             onClick={() => setShowReorderModal(true)}
@@ -367,6 +378,14 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
           columns={columnOrder}
           onReorder={handleColumnReorder}
           onClose={() => setShowReorderModal(false)}
+        />
+      )}
+
+      {/* Exclusions Manager Modal */}
+      {showExclusionsModal && (
+        <ExclusionManager
+          onClose={() => setShowExclusionsModal(false)}
+          onUpdate={onRefresh}
         />
       )}
     </div>

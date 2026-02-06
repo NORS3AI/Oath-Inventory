@@ -5,6 +5,7 @@ import { db } from '../lib/db';
 export default function QuickEditModal({ peptide, onClose, onUpdate, position }) {
   const [activeTab, setActiveTab] = useState('peptideId');
   const [formData, setFormData] = useState({ ...peptide });
+  const [isExcluded, setIsExcluded] = useState(false);
   const modalRef = useRef(null);
 
   // Define editable fields with their display names
@@ -35,6 +36,34 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Failed to save:', error);
+    }
+  };
+
+  // Handle exclude checkbox
+  const handleExcludeChange = async (checked) => {
+    setIsExcluded(checked);
+
+    if (checked) {
+      try {
+        // Get current exclusions
+        const currentExclusions = await db.settings.get('excludedProducts') || [];
+
+        // Add peptide ID to exclusions if not already there
+        if (!currentExclusions.includes(peptide.peptideId)) {
+          const updatedExclusions = [...currentExclusions, peptide.peptideId];
+          await db.settings.set('excludedProducts', updatedExclusions);
+        }
+
+        // Delete peptide from database
+        await db.peptides.delete(peptide.peptideId);
+
+        // Close modal and refresh
+        if (onUpdate) onUpdate();
+        onClose();
+      } catch (error) {
+        console.error('Failed to exclude peptide:', error);
+        setIsExcluded(false);
+      }
     }
   };
 
@@ -145,11 +174,29 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
           ))}
         </div>
 
-        {/* Footer hint */}
-        <div className="p-4 bg-gray-50 border-t border-gray-200 text-center">
-          <p className="text-xs text-gray-600">
-            Tap outside or press <span className="font-semibold">X</span> to close
-          </p>
+        {/* Footer with Exclude option */}
+        <div className="p-4 bg-gray-50 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isExcluded}
+                onChange={(e) => handleExcludeChange(e.target.checked)}
+                className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Exclude from inventory
+              </span>
+            </label>
+            <p className="text-xs text-gray-500">
+              Tap outside to close
+            </p>
+          </div>
+          {isExcluded && (
+            <p className="text-xs text-red-600 mt-2">
+              Item will be removed and excluded from future imports
+            </p>
+          )}
         </div>
       </div>
     </>

@@ -14,8 +14,7 @@ const DEFAULT_EXCLUSIONS = [
   'OATH-TESA-IPA-10-5'
 ];
 
-export default function ExclusionManager() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function ExclusionManager({ onClose, onUpdate }) {
   const [exclusions, setExclusions] = useState([]);
   const [newExclusion, setNewExclusion] = useState('');
   const [loading, setLoading] = useState(true);
@@ -41,6 +40,7 @@ export default function ExclusionManager() {
     try {
       await db.settings.set('excludedProducts', newList);
       setExclusions(newList);
+      if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Failed to save exclusions:', error);
     }
@@ -65,20 +65,8 @@ export default function ExclusionManager() {
     }
   };
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-      >
-        <Ban className="w-4 h-4" />
-        <span>Product Exclusions ({exclusions.length})</span>
-      </button>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -90,7 +78,7 @@ export default function ExclusionManager() {
             </div>
           </div>
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
             <X className="w-6 h-6" />
@@ -169,7 +157,7 @@ export default function ExclusionManager() {
               Changes are saved automatically
             </p>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={onClose}
               className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
             >
               Done
