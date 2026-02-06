@@ -1,16 +1,28 @@
-import { useState } from 'react';
-import { Package, Upload, Tags, CheckCircle, BarChart3, Moon, Sun } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, Upload, Tags, CheckCircle, BarChart3, Moon, Sun, FileText } from 'lucide-react';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
 import { ToastProvider } from './components/Toast';
+import { db } from './lib/db';
 import CSVUpload from './components/CSVUpload';
 import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
+import Reports from './components/Reports';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { peptides, loading, thresholds, stats, refresh } = useInventory();
   const { isDark, toggle } = useDarkMode();
+  const [orders, setOrders] = useState([]);
+
+  // Load orders
+  useEffect(() => {
+    const loadOrders = async () => {
+      const allOrders = await db.orders.getAll();
+      setOrders(allOrders);
+    };
+    loadOrders();
+  }, [peptides]); // Reload when peptides change
 
   const handleImportComplete = () => {
     refresh();
@@ -79,6 +91,12 @@ function App() {
               onClick={() => setActiveTab('sales')}
             />
             <NavButton
+              icon={<FileText className="w-5 h-5" />}
+              label="Reports"
+              active={activeTab === 'reports'}
+              onClick={() => setActiveTab('reports')}
+            />
+            <NavButton
               icon={<Upload className="w-5 h-5" />}
               label="Import CSV"
               active={activeTab === 'import'}
@@ -107,6 +125,7 @@ function App() {
             )}
             {activeTab === 'labeling' && <LabelingView peptides={peptides} />}
             {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
+            {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
             {activeTab === 'import' && <ImportView onImportComplete={handleImportComplete} />}
           </>
         )}
@@ -282,8 +301,8 @@ function LabelingView({ peptides }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Labeling Queue</h2>
-        <p className="text-gray-600 mt-1">Track peptides that need to be labeled</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Labeling Queue</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Track peptides that need to be labeled</p>
       </div>
       {peptidesNeedingLabels.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -308,8 +327,8 @@ function SalesReadyView({ peptides }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Sales Ready Validation</h2>
-        <p className="text-gray-600 mt-1">Three-point check: Purity, Net Weight, and Label</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sales Ready Validation</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Three-point check: Purity, Net Weight, and Label</p>
       </div>
       <SalesReady peptides={peptides} />
     </div>
@@ -320,10 +339,22 @@ function ImportView({ onImportComplete }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Import CSV</h2>
-        <p className="text-gray-600 mt-1">Upload your inventory CSV file</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Import CSV</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Upload your inventory CSV file</p>
       </div>
       <CSVUpload onImportComplete={onImportComplete} />
+    </div>
+  );
+}
+
+function ReportsView({ peptides, orders, thresholds }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & Analytics</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Comprehensive inventory analysis and exports</p>
+      </div>
+      <Reports peptides={peptides} orders={orders} thresholds={thresholds} />
     </div>
   );
 }
