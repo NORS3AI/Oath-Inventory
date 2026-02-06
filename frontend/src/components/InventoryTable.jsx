@@ -30,15 +30,16 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [sortDirection, setSortDirection] = useState('asc');
   const [filterStatus, setFilterStatus] = useState('all');
   const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
+  const [hiddenColumns, setHiddenColumns] = useState([]);
   const [draggedColumn, setDraggedColumn] = useState(null);
   const [selectedPeptide, setSelectedPeptide] = useState(null);
   const [quickEditPeptide, setQuickEditPeptide] = useState(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showExclusionsModal, setShowExclusionsModal] = useState(false);
 
-  // Load column order from settings
+  // Load column order and hidden columns from settings
   useEffect(() => {
-    const loadColumnOrder = async () => {
+    const loadColumnSettings = async () => {
       const savedOrder = await db.settings.get('columnOrder');
       if (savedOrder && Array.isArray(savedOrder)) {
         // Merge saved order with default columns (in case new columns were added)
@@ -53,8 +54,14 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
 
         setColumnOrder([...orderedColumns, ...newColumns]);
       }
+
+      // Load hidden columns
+      const savedHidden = await db.settings.get('hiddenColumns');
+      if (savedHidden && Array.isArray(savedHidden)) {
+        setHiddenColumns(savedHidden);
+      }
     };
-    loadColumnOrder();
+    loadColumnSettings();
   }, []);
 
   // Save column order to settings
@@ -68,6 +75,17 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
     setColumnOrder(newOrder);
     saveColumnOrder(newOrder);
   };
+
+  // Handle column visibility change
+  const handleVisibilityChange = async (hidden) => {
+    setHiddenColumns(hidden);
+    await db.settings.set('hiddenColumns', hidden);
+  };
+
+  // Get visible columns only
+  const visibleColumns = useMemo(() => {
+    return columnOrder.filter(col => !hiddenColumns.includes(col.id));
+  }, [columnOrder, hiddenColumns]);
 
   // Calculate status for each peptide
   const peptidesWithStatus = useMemo(() => {
@@ -288,7 +306,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {columnOrder.map((column, index) => (
+                {visibleColumns.map((column, index) => (
                   <th
                     key={column.id}
                     draggable
@@ -328,7 +346,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
                   onClick={() => setQuickEditPeptide(peptide)}
                   className="hover:bg-gray-50 cursor-pointer"
                 >
-                  {columnOrder.map((column) => (
+                  {visibleColumns.map((column) => (
                     <td
                       key={column.id}
                       className={`px-6 py-4 text-sm ${
@@ -376,7 +394,9 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
       {showReorderModal && (
         <ColumnReorderModal
           columns={columnOrder}
+          hiddenColumns={hiddenColumns}
           onReorder={handleColumnReorder}
+          onVisibilityChange={handleVisibilityChange}
           onClose={() => setShowReorderModal(false)}
         />
       )}

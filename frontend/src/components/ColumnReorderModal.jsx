@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
 
-export default function ColumnReorderModal({ columns, onReorder, onClose }) {
+export default function ColumnReorderModal({ columns, hiddenColumns = [], onReorder, onVisibilityChange, onClose }) {
   const [columnList, setColumnList] = useState([...columns]);
+  const [hidden, setHidden] = useState(new Set(hiddenColumns));
   const modalRef = useRef(null);
 
   // Move column up in the list
@@ -21,9 +22,23 @@ export default function ColumnReorderModal({ columns, onReorder, onClose }) {
     setColumnList(newList);
   };
 
+  // Toggle column visibility
+  const toggleVisibility = (columnId) => {
+    const newHidden = new Set(hidden);
+    if (newHidden.has(columnId)) {
+      newHidden.delete(columnId);
+    } else {
+      newHidden.add(columnId);
+    }
+    setHidden(newHidden);
+  };
+
   // Apply changes
   const handleSave = () => {
     onReorder(columnList);
+    if (onVisibilityChange) {
+      onVisibilityChange(Array.from(hidden));
+    }
     onClose();
   };
 
@@ -57,8 +72,8 @@ export default function ColumnReorderModal({ columns, onReorder, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Reorder Columns</h3>
-            <p className="text-sm text-gray-600">Use arrows to change order</p>
+            <h3 className="text-lg font-semibold text-gray-900">Manage Columns</h3>
+            <p className="text-sm text-gray-600">Reorder and show/hide columns</p>
           </div>
           <button
             onClick={onClose}
@@ -71,50 +86,78 @@ export default function ColumnReorderModal({ columns, onReorder, onClose }) {
         {/* Column List */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-2">
-            {columnList.map((column, index) => (
-              <div
-                key={column.id}
-                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
-              >
-                {/* Order Number */}
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
-                  {index + 1}
-                </div>
+            {columnList.map((column, index) => {
+              const isHidden = hidden.has(column.id);
+              return (
+                <div
+                  key={column.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                    isHidden
+                      ? 'bg-gray-100 border-gray-300 opacity-60'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  {/* Visibility Checkbox */}
+                  <label className="flex items-center cursor-pointer" title={isHidden ? 'Show column' : 'Hide column'}>
+                    <input
+                      type="checkbox"
+                      checked={!isHidden}
+                      onChange={() => toggleVisibility(column.id)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </label>
 
-                {/* Column Label */}
-                <div className="flex-1 font-medium text-gray-900">
-                  {column.label}
-                </div>
+                  {/* Order Number */}
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    isHidden
+                      ? 'bg-gray-300 text-gray-500'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {index + 1}
+                  </div>
 
-                {/* Up/Down Buttons */}
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => moveUp(index)}
-                    disabled={index === 0}
-                    className={`p-1.5 rounded transition-colors ${
-                      index === 0
-                        ? 'text-gray-300 cursor-not-allowed'
-                        : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                    }`}
-                    aria-label="Move up"
-                  >
-                    <ChevronUp className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => moveDown(index)}
-                    disabled={index === columnList.length - 1}
-                    className={`p-1.5 rounded transition-colors ${
-                      index === columnList.length - 1
-                        ? 'text-gray-300 cursor-not-allowed'
-                        : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                    }`}
-                    aria-label="Move down"
-                  >
-                    <ChevronDown className="w-5 h-5" />
-                  </button>
+                  {/* Column Label */}
+                  <div className={`flex-1 font-medium ${
+                    isHidden ? 'text-gray-500 line-through' : 'text-gray-900'
+                  }`}>
+                    {column.label}
+                  </div>
+
+                  {/* Hidden Icon */}
+                  {isHidden && (
+                    <EyeOff className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  )}
+
+                  {/* Up/Down Buttons */}
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => moveUp(index)}
+                      disabled={index === 0}
+                      className={`p-1.5 rounded transition-colors ${
+                        index === 0
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                      }`}
+                      aria-label="Move up"
+                    >
+                      <ChevronUp className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => moveDown(index)}
+                      disabled={index === columnList.length - 1}
+                      className={`p-1.5 rounded transition-colors ${
+                        index === columnList.length - 1
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                      }`}
+                      aria-label="Move down"
+                    >
+                      <ChevronDown className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
