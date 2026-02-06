@@ -4,6 +4,7 @@ import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
 import OrderManagement from './OrderManagement';
+import QuickEditModal from './QuickEditModal';
 
 // Define all available columns
 const DEFAULT_COLUMNS = [
@@ -29,6 +30,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
   const [draggedColumn, setDraggedColumn] = useState(null);
   const [selectedPeptide, setSelectedPeptide] = useState(null);
+  const [quickEditPeptide, setQuickEditPeptide] = useState(null);
 
   // Load column order from settings
   useEffect(() => {
@@ -179,7 +181,10 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
     if (column.id === 'actions') {
       return (
         <button
-          onClick={() => setSelectedPeptide(peptide)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedPeptide(peptide);
+          }}
           className="inline-flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
         >
           <MoreVertical className="w-4 h-4" />
@@ -295,7 +300,11 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {sortedPeptides.map((peptide) => (
-                <tr key={peptide.id} className="hover:bg-gray-50">
+                <tr
+                  key={peptide.id}
+                  onClick={() => setQuickEditPeptide(peptide)}
+                  className="hover:bg-gray-50 cursor-pointer"
+                >
                   {columnOrder.map((column) => (
                     <td
                       key={column.id}
@@ -327,6 +336,15 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         <OrderManagement
           peptide={selectedPeptide}
           onClose={() => setSelectedPeptide(null)}
+          onUpdate={onRefresh}
+        />
+      )}
+
+      {/* Quick Edit Modal */}
+      {quickEditPeptide && (
+        <QuickEditModal
+          peptide={quickEditPeptide}
+          onClose={() => setQuickEditPeptide(null)}
           onUpdate={onRefresh}
         />
       )}
