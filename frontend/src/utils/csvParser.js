@@ -180,9 +180,7 @@ export function validatePeptideData(peptides) {
       errors.push(`Row ${rowNum}: Quantity must be a number`);
     }
 
-    if (peptide.quantity < 0) {
-      errors.push(`Row ${rowNum}: Quantity cannot be negative`);
-    }
+    // Note: Negative quantities are allowed for back-ordering
   });
 
   return {
