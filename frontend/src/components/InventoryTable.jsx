@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical } from 'lucide-react';
+import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
 import OrderManagement from './OrderManagement';
 import QuickEditModal from './QuickEditModal';
+import ColumnReorderModal from './ColumnReorderModal';
 
 // Define all available columns
 const DEFAULT_COLUMNS = [
@@ -31,6 +32,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [draggedColumn, setDraggedColumn] = useState(null);
   const [selectedPeptide, setSelectedPeptide] = useState(null);
   const [quickEditPeptide, setQuickEditPeptide] = useState(null);
+  const [showReorderModal, setShowReorderModal] = useState(false);
 
   // Load column order from settings
   useEffect(() => {
@@ -57,6 +59,12 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const saveColumnOrder = async (newOrder) => {
     const orderIds = newOrder.map(col => col.id);
     await db.settings.set('columnOrder', orderIds);
+  };
+
+  // Handle column reorder from modal
+  const handleColumnReorder = (newOrder) => {
+    setColumnOrder(newOrder);
+    saveColumnOrder(newOrder);
   };
 
   // Calculate status for each peptide
@@ -238,6 +246,15 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
             </select>
           </div>
 
+          {/* Reorder Columns Button */}
+          <button
+            onClick={() => setShowReorderModal(true)}
+            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <List className="w-4 h-4" />
+            <span className="hidden sm:inline">Reorder</span>
+          </button>
+
           {/* Export Button */}
           <button
             onClick={handleExport}
@@ -249,13 +266,9 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         </div>
       </div>
 
-      {/* Results Count & Column Reorder Hint */}
+      {/* Results Count */}
       <div className="flex items-center justify-between text-sm text-gray-600">
         <span>Showing {sortedPeptides.length} of {peptides.length} peptides</span>
-        <span className="flex items-center gap-2">
-          <GripVertical className="w-4 h-4" />
-          Drag column headers to reorder
-        </span>
       </div>
 
       {/* Table */}
@@ -272,14 +285,13 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
                     onDragEnd={handleDragEnd}
-                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-move
-                      ${column.sortable ? 'hover:bg-gray-100' : ''}
+                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
+                      ${column.sortable ? 'hover:bg-gray-100 cursor-pointer' : ''}
                       ${draggedColumn === index ? 'opacity-50' : ''}
                     `}
                     onClick={() => column.sortable && handleSort(column.field)}
                   >
                     <div className="flex items-center space-x-2">
-                      <GripVertical className="w-4 h-4 text-gray-400" />
                       <span>{column.label}</span>
                       {column.sortable && (
                         <>
@@ -346,6 +358,15 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
           peptide={quickEditPeptide}
           onClose={() => setQuickEditPeptide(null)}
           onUpdate={onRefresh}
+        />
+      )}
+
+      {/* Column Reorder Modal */}
+      {showReorderModal && (
+        <ColumnReorderModal
+          columns={columnOrder}
+          onReorder={handleColumnReorder}
+          onClose={() => setShowReorderModal(false)}
         />
       )}
     </div>
