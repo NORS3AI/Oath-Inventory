@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle2, X, Trash2, AlertTriangle } from 'lucide-react';
 import { parseInventoryCSV, generateSampleCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
+import ExclusionManager from './ExclusionManager';
 
 export default function CSVUpload({ onImportComplete }) {
   const [dragActive, setDragActive] = useState(false);
@@ -52,8 +53,20 @@ export default function CSVUpload({ onImportComplete }) {
     setResult(null);
 
     try {
-      // Parse CSV
-      const parseResult = await parseInventoryCSV(file);
+      // Load exclusions from settings
+      const excludedProducts = await db.settings.get('excludedProducts') || [
+        'OATH-A1-TEST',
+        'a1 test',
+        'OATH-GH-FRAGMENT-176-191-5MG',
+        'OATH-GIFT-CARD',
+        'gift card',
+        'OATH-NAD+-1000MG',
+        'OATH-SS-31-10MG',
+        'OATH-TESA-IPA-10-5'
+      ];
+
+      // Parse CSV with exclusions
+      const parseResult = await parseInventoryCSV(file, { excludedProducts });
 
       let importedCount = 0;
       let updatedCount = 0;
@@ -218,14 +231,15 @@ export default function CSVUpload({ onImportComplete }) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <button
           onClick={handleDownloadSample}
-          className="flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
         >
           <FileText className="w-4 h-4" />
           <span>Download Sample CSV</span>
         </button>
+        <ExclusionManager />
         <button
           onClick={() => setShowClearConfirm(true)}
           className="inline-flex items-center justify-center space-x-2 px-4 py-2 border border-red-300 rounded-lg text-sm font-medium text-red-700 bg-white hover:bg-red-50 transition-colors"

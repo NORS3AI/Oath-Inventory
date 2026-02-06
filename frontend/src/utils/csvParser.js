@@ -53,19 +53,16 @@ export async function parseInventoryCSV(file, options = {}) {
  * @returns {array} Transformed peptide objects
  */
 export function transformPeptideData(rawData, options = {}) {
-  const { fieldMapping = getDefaultFieldMapping() } = options;
+  const { fieldMapping = getDefaultFieldMapping(), excludedProducts = [] } = options;
 
-  // List of test/system products to exclude from import (case-insensitive patterns)
-  const excludedPatterns = [
-    /^OATH-A1-TEST$/i,
-    /^a1\s*test$/i,
-    /^OATH-GH-FRAGMENT-176-191-5MG$/i,
-    /^OATH-GIFT-CARD$/i,
-    /gift\s*card/i,
-    /^OATH-NAD\+-1000MG$/i,
-    /^OATH-SS-31-10MG$/i,
-    /^OATH-TESA-IPA-10-5$/i
-  ];
+  // Convert exclusion strings to case-insensitive regex patterns
+  const excludedPatterns = excludedProducts.map(pattern => {
+    // Escape special regex characters except for common ones we want to keep
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Allow flexible whitespace matching
+    const flexible = escaped.replace(/\s+/g, '\\s*');
+    return new RegExp(`^${flexible}$`, 'i');
+  });
 
   return rawData
     .filter(row => row && Object.keys(row).length > 0)
