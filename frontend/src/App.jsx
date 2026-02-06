@@ -3,6 +3,7 @@ import { Package, Upload, Tags, CheckCircle, BarChart3 } from 'lucide-react';
 import { useInventory } from './hooks/useInventory';
 import CSVUpload from './components/CSVUpload';
 import InventoryTable from './components/InventoryTable';
+import SalesReady from './components/SalesReady';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -90,7 +91,7 @@ function App() {
               />
             )}
             {activeTab === 'labeling' && <LabelingView peptides={peptides} />}
-            {activeTab === 'sales' && <SalesReadyView />}
+            {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
             {activeTab === 'import' && <ImportView onImportComplete={handleImportComplete} />}
           </>
         )}
@@ -287,20 +288,14 @@ function LabelingView({ peptides }) {
   );
 }
 
-function SalesReadyView() {
+function SalesReadyView({ peptides }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Sales Ready</h2>
-        <p className="text-gray-600 mt-1">Peptides ready for sale (tested & labeled)</p>
+        <h2 className="text-2xl font-bold text-gray-900">Sales Ready Validation</h2>
+        <p className="text-gray-600 mt-1">Three-point check: Purity, Net Weight, and Label</p>
       </div>
-      <div className="bg-white rounded-lg shadow p-8 text-center">
-        <CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600 mb-2">No sales-ready peptides yet.</p>
-        <p className="text-sm text-gray-500">
-          Sales readiness validation coming in Phase 6!
-        </p>
-      </div>
+      <SalesReady peptides={peptides} />
     </div>
   );
 }
