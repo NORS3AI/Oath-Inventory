@@ -152,14 +152,14 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <SortableHeader
-                  label="Peptide ID"
+                  label="Product"
                   field="peptideId"
                   currentField={sortField}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label="Name"
+                  label="SKU"
                   field="peptideName"
                   currentField={sortField}
                   direction={sortDirection}
@@ -173,16 +173,28 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
                   onSort={handleSort}
                 />
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Unit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  Batch #
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Supplier
+                  Net Weight
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Purity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Velocity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ordered Qty
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ordered Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Notes
                 </th>
               </tr>
             </thead>
@@ -200,19 +212,31 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {peptide.quantity}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.unit || 'mg'}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`status-badge ${statusConfig.className}`}>
                         {statusConfig.label}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.category || '-'}
+                      {peptide.batchNumber || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.supplier || '-'}
+                      {peptide.netWeight || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {peptide.purity || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {peptide.velocity || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {peptide.orderedQty || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {peptide.orderedDate || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {peptide.notes || '-'}
                     </td>
                   </tr>
                 );

@@ -65,8 +65,18 @@ export function transformPeptideData(rawData, options = {}) {
         quantity: parseNumber(extractField(row, fieldMapping.quantity)),
         unit: extractField(row, fieldMapping.unit) || 'mg',
 
-        // Optional fields
-        category: extractField(row, fieldMapping.category),
+        // Lifecycle & Testing fields
+        batchNumber: extractField(row, fieldMapping.batchNumber),
+        purity: extractField(row, fieldMapping.purity),
+        netWeight: extractField(row, fieldMapping.netWeight),
+
+        // Order tracking fields
+        orderedDate: extractField(row, fieldMapping.orderedDate),
+        orderedQty: parseNumber(extractField(row, fieldMapping.orderedQty)),
+
+        // Operational fields
+        velocity: extractField(row, fieldMapping.velocity),
+        notes: extractField(row, fieldMapping.notes),
         supplier: extractField(row, fieldMapping.supplier),
         location: extractField(row, fieldMapping.location),
 
@@ -135,11 +145,24 @@ function parseNumber(value) {
  */
 export function getDefaultFieldMapping() {
   return {
-    peptideId: ['Peptide ID', 'ID', 'Item ID', 'Product ID', 'SKU'],
-    peptideName: ['Peptide Name', 'Name', 'Product Name', 'Item Name', 'Description'],
+    // Core identification - maps to your CSV columns
+    peptideId: ['Product', 'Peptide ID', 'ID', 'Item ID'],
+    peptideName: ['SKU', 'Peptide Name', 'Name', 'Product Name'],
     quantity: ['Quantity', 'Qty', 'On Hand', 'Stock', 'Available', 'Amount'],
     unit: ['Unit', 'UOM', 'Unit of Measure'],
-    category: ['Category', 'Type', 'Class', 'Group'],
+
+    // Lifecycle & Testing
+    batchNumber: ['Batch Number', 'Batch', 'Batch #', 'Lot Number', 'Lot'],
+    purity: ['Purity', 'Purity %', 'Purity Percentage'],
+    netWeight: ['Size', 'Net Weight', 'Weight', 'Net Wt'],
+
+    // Order tracking
+    orderedDate: ['Incoming Arrival', 'Ordered Date', 'Order Date', 'Date Ordered'],
+    orderedQty: ['Incoming Qty', 'Ordered Qty', 'Order Quantity', 'Qty Ordered'],
+
+    // Operational
+    velocity: ['Velocity', 'Usage Rate', 'Demand'],
+    notes: ['Status', 'Notes', 'Comments', 'Remarks'],
     supplier: ['Supplier', 'Vendor', 'Manufacturer', 'Lab'],
     location: ['Location', 'Warehouse', 'Storage', 'Bin']
   };
