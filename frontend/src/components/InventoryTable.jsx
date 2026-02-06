@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ArrowUpDown, Package, Download, GripVertical } from 'lucide-react';
+import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
+import OrderManagement from './OrderManagement';
 
 // Define all available columns
 const DEFAULT_COLUMNS = [
@@ -16,7 +17,8 @@ const DEFAULT_COLUMNS = [
   { id: 'velocity', label: 'Velocity', field: 'velocity', sortable: false },
   { id: 'orderedQty', label: 'Ordered Qty', field: 'orderedQty', sortable: false },
   { id: 'orderedDate', label: 'Ordered Date', field: 'orderedDate', sortable: false },
-  { id: 'notes', label: 'Notes', field: 'notes', sortable: false }
+  { id: 'notes', label: 'Notes', field: 'notes', sortable: false },
+  { id: 'actions', label: 'Actions', field: 'actions', sortable: false }
 ];
 
 export default function InventoryTable({ peptides, onRefresh, thresholds }) {
@@ -26,6 +28,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
   const [draggedColumn, setDraggedColumn] = useState(null);
+  const [selectedPeptide, setSelectedPeptide] = useState(null);
 
   // Load column order from settings
   useEffect(() => {
@@ -58,7 +61,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const peptidesWithStatus = useMemo(() => {
     return peptides.map(peptide => ({
       ...peptide,
-      status: calculateStockStatus(peptide.quantity, thresholds, false)
+      status: calculateStockStatus(peptide.quantity, thresholds, peptide.hasActiveOrder || false)
     }));
   }, [peptides, thresholds]);
 
@@ -170,6 +173,18 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         <span className={`status-badge ${statusConfig.className}`}>
           {statusConfig.label}
         </span>
+      );
+    }
+
+    if (column.id === 'actions') {
+      return (
+        <button
+          onClick={() => setSelectedPeptide(peptide)}
+          className="inline-flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+        >
+          <MoreVertical className="w-4 h-4" />
+          <span>Manage</span>
+        </button>
       );
     }
 
@@ -306,6 +321,15 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
           </div>
         )}
       </div>
+
+      {/* Order Management Modal */}
+      {selectedPeptide && (
+        <OrderManagement
+          peptide={selectedPeptide}
+          onClose={() => setSelectedPeptide(null)}
+          onUpdate={onRefresh}
+        />
+      )}
     </div>
   );
 }
