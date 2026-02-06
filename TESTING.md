@@ -200,23 +200,117 @@ Tests are designed to run in CI/CD pipelines:
 npm run test:run
 ```
 
-## Future Enhancements
+## End-to-End Tests (Playwright)
 
-### Integration Tests (Phase 9 - In Progress)
-- Full IndexedDB CRUD operations
-- CSV import end-to-end workflow
-- Order lifecycle complete flow
+### Test Infrastructure
 
-### End-to-End Tests (Phase 9 - Pending)
-- Critical user workflows
-- Multi-tab navigation
-- Data persistence across sessions
+E2E tests are built with Playwright and cover all critical user workflows across multiple browsers and devices.
+
+**Configuration**: `playwright.config.js`
+
+**Test Files** (in `e2e/` directory):
+- `navigation.spec.js` - Tab navigation, dark mode, state persistence
+- `dashboard.spec.js` - Dashboard display and status legend
+- `csv-import.spec.js` - CSV import workflow
+- `inventory.spec.js` - Inventory management and quick edit
+- `labeling.spec.js` - Label management and priority queue
+- `sales-ready.spec.js` - Sales readiness validation
+- `reports.spec.js` - Reports and analytics
+
+### Running E2E Tests
+
+```bash
+# Install Playwright browsers (first time only)
+npx playwright install
+
+# Run all E2E tests
+npm run test:e2e
+
+# Run with UI mode (interactive)
+npm run test:e2e:ui
+
+# Run in headed mode (see browser)
+npm run test:e2e:headed
+
+# Debug mode
+npm run test:e2e:debug
+
+# View test report
+npm run test:e2e:report
+```
+
+### Browser Coverage
+
+E2E tests run on:
+- Desktop Chrome
+- Desktop Firefox
+- Desktop Safari
+- Mobile Chrome (Pixel 5)
+- Mobile Safari (iPhone 12)
+- iPad Pro
+
+### What's Tested
+
+#### Navigation Tests
+- Application loads correctly
+- All tabs are accessible
+- Active tab highlighting
+- Dark mode toggle and persistence
+- Version display
+- Footer content
+
+#### Dashboard Tests
+- Stock status legend display
+- Quick stats accuracy
+- Action items vs getting started
+- All 5 status types visible
+
+#### CSV Import Tests
+- Import UI components
+- Field mapping guide
+- Import mode selection
+- Exclusion manager
+- Data persistence
+
+#### Inventory Tests
+- Table display and controls
+- Search functionality
+- Column management
+- Quick edit modal
+- Order workflow
 - Export functionality
 
-### User Acceptance Testing (Phase 9 - Pending)
-- Real-world data scenarios
-- Performance benchmarks
+#### Label Management Tests
+- Label inventory display
+- Priority queue algorithm
+- Apply/remove labels
+- Labeled peptides list
+
+#### Sales Ready Tests
+- Three-point validation
+- Filter options (All/Ready/Blocked)
+- Status indicators
+- Missing requirements display
+
+#### Reports Tests
+- All report sections
+- Export buttons
+- Operational metrics
+- Stock breakdown
+- Low stock items
+
+### User Acceptance Testing
+
+A comprehensive UAT checklist is available in `UAT-CHECKLIST.md` covering:
+- All features and workflows
 - Cross-browser compatibility
+- Mobile/tablet testing
+- Performance validation
+- Error handling
+- Edge cases
+- Business logic verification
+
+The checklist includes 200+ test cases organized into 15 categories.
 
 ## Debugging Tests
 
