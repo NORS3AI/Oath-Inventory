@@ -55,14 +55,16 @@ export async function parseInventoryCSV(file, options = {}) {
 export function transformPeptideData(rawData, options = {}) {
   const { fieldMapping = getDefaultFieldMapping() } = options;
 
-  // List of test/system products to exclude from import
-  const excludedProducts = [
-    'OATH-A1-TEST',
-    'OATH-GH-FRAGMENT-176-191-5MG',
-    'OATH-GIFT-CARD',
-    'OATH-NAD+-1000MG',
-    'OATH-SS-31-10MG',
-    'OATH-TESA-IPA-10-5'
+  // List of test/system products to exclude from import (case-insensitive patterns)
+  const excludedPatterns = [
+    /^OATH-A1-TEST$/i,
+    /^a1\s*test$/i,
+    /^OATH-GH-FRAGMENT-176-191-5MG$/i,
+    /^OATH-GIFT-CARD$/i,
+    /gift\s*card/i,
+    /^OATH-NAD\+-1000MG$/i,
+    /^OATH-SS-31-10MG$/i,
+    /^OATH-TESA-IPA-10-5$/i
   ];
 
   return rawData
@@ -70,7 +72,10 @@ export function transformPeptideData(rawData, options = {}) {
     .filter(row => {
       // Filter out excluded products
       const productId = extractField(row, fieldMapping.peptideId);
-      return !excludedProducts.includes(productId);
+      if (!productId) return true; // Keep rows without product ID for validation
+
+      // Check if product ID matches any excluded pattern
+      return !excludedPatterns.some(pattern => pattern.test(productId));
     })
     .map((row, index) => {
       const peptide = {
