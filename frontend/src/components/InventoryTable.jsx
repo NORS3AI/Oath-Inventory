@@ -1,13 +1,58 @@
-import { useState, useMemo } from 'react';
-import { Search, ArrowUpDown, Package, Download, Trash2 } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, ArrowUpDown, Package, Download, GripVertical } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
+import { db } from '../lib/db';
+
+// Define all available columns
+const DEFAULT_COLUMNS = [
+  { id: 'peptideId', label: 'Product', field: 'peptideId', sortable: true },
+  { id: 'peptideName', label: 'SKU', field: 'peptideName', sortable: true },
+  { id: 'quantity', label: 'Quantity', field: 'quantity', sortable: true },
+  { id: 'status', label: 'Status', field: 'status', sortable: false },
+  { id: 'batchNumber', label: 'Batch #', field: 'batchNumber', sortable: false },
+  { id: 'netWeight', label: 'Net Weight', field: 'netWeight', sortable: false },
+  { id: 'purity', label: 'Purity', field: 'purity', sortable: false },
+  { id: 'velocity', label: 'Velocity', field: 'velocity', sortable: false },
+  { id: 'orderedQty', label: 'Ordered Qty', field: 'orderedQty', sortable: false },
+  { id: 'orderedDate', label: 'Ordered Date', field: 'orderedDate', sortable: false },
+  { id: 'notes', label: 'Notes', field: 'notes', sortable: false }
+];
 
 export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('peptideId');
   const [sortDirection, setSortDirection] = useState('asc');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
+  const [draggedColumn, setDraggedColumn] = useState(null);
+
+  // Load column order from settings
+  useEffect(() => {
+    const loadColumnOrder = async () => {
+      const savedOrder = await db.settings.get('columnOrder');
+      if (savedOrder && Array.isArray(savedOrder)) {
+        // Merge saved order with default columns (in case new columns were added)
+        const orderedColumns = savedOrder
+          .map(id => DEFAULT_COLUMNS.find(col => col.id === id))
+          .filter(Boolean);
+
+        // Add any new columns that weren't in saved order
+        const newColumns = DEFAULT_COLUMNS.filter(
+          col => !savedOrder.includes(col.id)
+        );
+
+        setColumnOrder([...orderedColumns, ...newColumns]);
+      }
+    };
+    loadColumnOrder();
+  }, []);
+
+  // Save column order to settings
+  const saveColumnOrder = async (newOrder) => {
+    const orderIds = newOrder.map(col => col.id);
+    await db.settings.set('columnOrder', orderIds);
+  };
 
   // Calculate status for each peptide
   const peptidesWithStatus = useMemo(() => {
@@ -25,8 +70,8 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
       const matchesSearch = !searchTerm ||
         peptide.peptideId?.toLowerCase().includes(searchLower) ||
         peptide.peptideName?.toLowerCase().includes(searchLower) ||
-        peptide.category?.toLowerCase().includes(searchLower) ||
-        peptide.supplier?.toLowerCase().includes(searchLower);
+        peptide.batchNumber?.toLowerCase().includes(searchLower) ||
+        peptide.notes?.toLowerCase().includes(searchLower);
 
       // Status filter
       const matchesStatus = filterStatus === 'all' || peptide.status === filterStatus;
@@ -73,6 +118,35 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
     downloadCSV(csvContent, `oath-inventory-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e, columnIndex) => {
+    setDraggedColumn(columnIndex);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedColumn === null) return;
+
+    const newOrder = [...columnOrder];
+    const draggedItem = newOrder[draggedColumn];
+    newOrder.splice(draggedColumn, 1);
+    newOrder.splice(dropIndex, 0, draggedItem);
+
+    setColumnOrder(newOrder);
+    saveColumnOrder(newOrder);
+    setDraggedColumn(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedColumn(null);
+  };
+
   // Count by status
   const statusCounts = useMemo(() => {
     const counts = {
@@ -87,6 +161,21 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
     });
     return counts;
   }, [peptidesWithStatus]);
+
+  // Render cell content based on column type
+  const renderCell = (peptide, column) => {
+    if (column.id === 'status') {
+      const statusConfig = getStatusConfig(peptide.status);
+      return (
+        <span className={`status-badge ${statusConfig.className}`}>
+          {statusConfig.label}
+        </span>
+      );
+    }
+
+    const value = peptide[column.field];
+    return value !== undefined && value !== null && value !== '' ? value : '-';
+  };
 
   if (peptides.length === 0) {
     return (
@@ -140,9 +229,13 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         </div>
       </div>
 
-      {/* Results Count */}
-      <div className="text-sm text-gray-600">
-        Showing {sortedPeptides.length} of {peptides.length} peptides
+      {/* Results Count & Column Reorder Hint */}
+      <div className="flex items-center justify-between text-sm text-gray-600">
+        <span>Showing {sortedPeptides.length} of {peptides.length} peptides</span>
+        <span className="flex items-center gap-2">
+          <GripVertical className="w-4 h-4" />
+          Drag column headers to reorder
+        </span>
       </div>
 
       {/* Table */}
@@ -151,96 +244,58 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <SortableHeader
-                  label="Product"
-                  field="peptideId"
-                  currentField={sortField}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label="SKU"
-                  field="peptideName"
-                  currentField={sortField}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label="Quantity"
-                  field="quantity"
-                  currentField={sortField}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Batch #
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Net Weight
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Purity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Velocity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ordered Qty
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ordered Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Notes
-                </th>
+                {columnOrder.map((column, index) => (
+                  <th
+                    key={column.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-move
+                      ${column.sortable ? 'hover:bg-gray-100' : ''}
+                      ${draggedColumn === index ? 'opacity-50' : ''}
+                    `}
+                    onClick={() => column.sortable && handleSort(column.field)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <GripVertical className="w-4 h-4 text-gray-400" />
+                      <span>{column.label}</span>
+                      {column.sortable && (
+                        <>
+                          <ArrowUpDown
+                            className={`w-4 h-4 ${sortField === column.field ? 'text-blue-600' : 'text-gray-400'}`}
+                          />
+                          {sortField === column.field && (
+                            <span className="text-xs text-blue-600">
+                              {sortDirection === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {sortedPeptides.map((peptide) => {
-                const statusConfig = getStatusConfig(peptide.status);
-                return (
-                  <tr key={peptide.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {peptide.peptideId}
+              {sortedPeptides.map((peptide) => (
+                <tr key={peptide.id} className="hover:bg-gray-50">
+                  {columnOrder.map((column) => (
+                    <td
+                      key={column.id}
+                      className={`px-6 py-4 text-sm ${
+                        column.id === 'peptideId' ? 'font-medium text-gray-900' :
+                        column.id === 'status' ? '' :
+                        column.id === 'notes' ? 'max-w-xs truncate text-gray-500' :
+                        'text-gray-500'
+                      } ${column.id === 'notes' ? '' : 'whitespace-nowrap'}`}
+                    >
+                      {renderCell(peptide, column)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {peptide.peptideName || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {peptide.quantity}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`status-badge ${statusConfig.className}`}>
-                        {statusConfig.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.batchNumber || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.netWeight || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.purity || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.velocity || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.orderedQty || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {peptide.orderedDate || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {peptide.notes || '-'}
-                    </td>
-                  </tr>
-                );
-              })}
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -252,28 +307,5 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         )}
       </div>
     </div>
-  );
-}
-
-function SortableHeader({ label, field, currentField, direction, onSort }) {
-  const isActive = currentField === field;
-
-  return (
-    <th
-      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-      onClick={() => onSort(field)}
-    >
-      <div className="flex items-center space-x-1">
-        <span>{label}</span>
-        <ArrowUpDown
-          className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-400'}`}
-        />
-        {isActive && (
-          <span className="text-xs text-blue-600">
-            {direction === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </div>
-    </th>
   );
 }

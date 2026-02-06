@@ -55,8 +55,23 @@ export async function parseInventoryCSV(file, options = {}) {
 export function transformPeptideData(rawData, options = {}) {
   const { fieldMapping = getDefaultFieldMapping() } = options;
 
+  // List of test/system products to exclude from import
+  const excludedProducts = [
+    'OATH-A1-TEST',
+    'OATH-GH-FRAGMENT-176-191-5MG',
+    'OATH-GIFT-CARD',
+    'OATH-NAD+-1000MG',
+    'OATH-SS-31-10MG',
+    'OATH-TESA-IPA-10-5'
+  ];
+
   return rawData
     .filter(row => row && Object.keys(row).length > 0)
+    .filter(row => {
+      // Filter out excluded products
+      const productId = extractField(row, fieldMapping.peptideId);
+      return !excludedProducts.includes(productId);
+    })
     .map((row, index) => {
       const peptide = {
         // Core fields
