@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle2, X, Trash2, AlertTriangle } from 'lucide-react';
 import { parseInventoryCSV, generateSampleCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
 
@@ -8,6 +8,9 @@ export default function CSVUpload({ onImportComplete }) {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [importMode, setImportMode] = useState('replace'); // 'replace' or 'update'
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -28,7 +31,7 @@ export default function CSVUpload({ onImportComplete }) {
     if (files && files[0]) {
       handleFile(files[0]);
     }
-  }, []);
+  }, [importMode]);
 
   const handleChange = (e) => {
     e.preventDefault();
@@ -52,12 +55,37 @@ export default function CSVUpload({ onImportComplete }) {
       // Parse CSV
       const parseResult = await parseInventoryCSV(file);
 
-      // Import to database
-      await db.peptides.bulkImport(parseResult.peptides);
+      let importedCount = 0;
+      let updatedCount = 0;
+
+      if (importMode === 'replace') {
+        // Clear all existing data first
+        await db.peptides.clear();
+        // Import all new data
+        await db.peptides.bulkImport(parseResult.peptides);
+        importedCount = parseResult.peptides.length;
+      } else {
+        // Update mode: update existing or add new
+        for (const peptide of parseResult.peptides) {
+          const existing = await db.peptides.get(peptide.peptideId);
+          if (existing) {
+            // Update existing peptide
+            await db.peptides.update(peptide.peptideId, peptide);
+            updatedCount++;
+          } else {
+            // Add new peptide
+            await db.peptides.set(peptide.peptideId, peptide);
+            importedCount++;
+          }
+        }
+      }
 
       setResult({
         success: true,
-        imported: parseResult.peptides.length,
+        mode: importMode,
+        imported: importedCount,
+        updated: updatedCount,
+        total: parseResult.peptides.length,
         meta: parseResult.meta
       });
 
@@ -74,6 +102,25 @@ export default function CSVUpload({ onImportComplete }) {
     }
   };
 
+  const handleClearAll = async () => {
+    setClearing(true);
+    try {
+      await db.peptides.clear();
+      setShowClearConfirm(false);
+      setResult({
+        success: true,
+        cleared: true
+      });
+      if (onImportComplete) {
+        onImportComplete([]);
+      }
+    } catch (err) {
+      setError('Failed to clear inventory: ' + err.message);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const handleDownloadSample = () => {
     const sampleCSV = generateSampleCSV();
     downloadCSV(sampleCSV, 'oath-inventory-sample.csv');
@@ -86,6 +133,45 @@ export default function CSVUpload({ onImportComplete }) {
 
   return (
     <div className="space-y-6">
+      {/* Import Mode Selection */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Import Mode</h3>
+        <div className="space-y-3">
+          <label className="flex items-start space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              name="importMode"
+              value="replace"
+              checked={importMode === 'replace'}
+              onChange={(e) => setImportMode(e.target.value)}
+              className="mt-1"
+            />
+            <div>
+              <div className="font-medium text-gray-900">Replace All Inventory</div>
+              <div className="text-sm text-gray-600">
+                Clear existing data and import fresh. Use this for full inventory updates.
+              </div>
+            </div>
+          </label>
+          <label className="flex items-start space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              name="importMode"
+              value="update"
+              checked={importMode === 'update'}
+              onChange={(e) => setImportMode(e.target.value)}
+              className="mt-1"
+            />
+            <div>
+              <div className="font-medium text-gray-900">Update Existing Inventory</div>
+              <div className="text-sm text-gray-600">
+                Update quantities for existing products, add new ones. No duplicates created.
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
       {/* Upload Area */}
       <div
         className={`
@@ -125,35 +211,111 @@ export default function CSVUpload({ onImportComplete }) {
         </div>
 
         <p className="text-xs text-gray-500 mt-4">
-          Supports CSV files with Peptide ID, Name, and Quantity columns
+          Mode: <span className="font-semibold">
+            {importMode === 'replace' ? 'Replace All' : 'Update Existing'}
+          </span>
         </p>
       </div>
 
-      {/* Download Sample Button */}
-      <div className="text-center">
+      {/* Action Buttons */}
+      <div className="flex gap-4">
         <button
           onClick={handleDownloadSample}
-          className="inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+          className="flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
         >
           <FileText className="w-4 h-4" />
           <span>Download Sample CSV</span>
         </button>
+        <button
+          onClick={() => setShowClearConfirm(true)}
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2 border border-red-300 rounded-lg text-sm font-medium text-red-700 bg-white hover:bg-red-50 transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+          <span>Clear All Data</span>
+        </button>
       </div>
 
+      {/* Clear Confirmation Dialog */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-start space-x-4">
+              <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Clear All Inventory Data?
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  This will permanently delete all peptides from your inventory. This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleClearAll}
+                    disabled={clearing}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+                  >
+                    {clearing ? 'Clearing...' : 'Yes, Clear All'}
+                  </button>
+                  <button
+                    onClick={() => setShowClearConfirm(false)}
+                    disabled={clearing}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Success Result */}
-      {result && result.success && (
+      {result && result.success && !result.cleared && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start">
             <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
             <div className="ml-3 flex-1">
               <h3 className="text-sm font-medium text-green-900">Import Successful!</h3>
               <div className="mt-2 text-sm text-green-800">
-                <p>Successfully imported <strong>{result.imported}</strong> peptides.</p>
+                {result.mode === 'replace' ? (
+                  <p>Replaced all inventory with <strong>{result.imported}</strong> peptides.</p>
+                ) : (
+                  <>
+                    <p>
+                      <strong>{result.updated}</strong> existing peptide{result.updated !== 1 ? 's' : ''} updated.
+                    </p>
+                    <p>
+                      <strong>{result.imported}</strong> new peptide{result.imported !== 1 ? 's' : ''} added.
+                    </p>
+                  </>
+                )}
                 {result.meta.validRows < result.meta.totalRows && (
                   <p className="mt-1">
-                    Skipped {result.meta.totalRows - result.meta.validRows} invalid rows.
+                    Skipped {result.meta.totalRows - result.meta.validRows} invalid/excluded rows.
                   </p>
                 )}
+              </div>
+            </div>
+            <button
+              onClick={clearResult}
+              className="ml-3 text-green-600 hover:text-green-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Success */}
+      {result && result.cleared && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-green-900">All Data Cleared</h3>
+              <div className="mt-2 text-sm text-green-800">
+                <p>All inventory data has been removed. Ready for fresh import.</p>
               </div>
             </div>
             <button
@@ -191,10 +353,10 @@ export default function CSVUpload({ onImportComplete }) {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-sm font-medium text-blue-900 mb-2">CSV Format Requirements</h3>
         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-          <li>Required columns: Peptide ID, Peptide Name, Quantity</li>
-          <li>Optional columns: Unit, Category, Supplier, Location</li>
+          <li>Required columns: Product, SKU, Quantity</li>
+          <li>Optional columns: Size, Batch Number, Purity, Velocity, Status, etc.</li>
           <li>First row must contain headers</li>
-          <li>All Peptide IDs must be unique</li>
+          <li>All Product IDs must be unique</li>
           <li>Download the sample CSV to see the correct format</li>
         </ul>
       </div>
