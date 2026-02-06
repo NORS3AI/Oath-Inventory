@@ -8,6 +8,7 @@ import CSVUpload from './components/CSVUpload';
 import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
 import Reports from './components/Reports';
+import LabelManagement from './components/LabelManagement';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -123,7 +124,7 @@ function App() {
                 onRefresh={refresh}
               />
             )}
-            {activeTab === 'labeling' && <LabelingView peptides={peptides} />}
+            {activeTab === 'labeling' && <LabelingView peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
             {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
             {activeTab === 'import' && <ImportView onImportComplete={handleImportComplete} />}
@@ -295,30 +296,14 @@ function InventoryView({ peptides, thresholds, onRefresh }) {
   );
 }
 
-function LabelingView({ peptides }) {
-  const peptidesNeedingLabels = peptides.filter(p => p.quantity > 0);
-
+function LabelingView({ peptides, onRefresh }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Labeling Queue</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Track peptides that need to be labeled</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Label Management</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage label inventory and apply labels to peptides</p>
       </div>
-      {peptidesNeedingLabels.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <Tags className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No labeling tasks yet. Import inventory to see what needs labels.</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-600 mb-4">
-            {peptidesNeedingLabels.length} peptide{peptidesNeedingLabels.length !== 1 ? 's' : ''} with inventory
-          </p>
-          <p className="text-sm text-gray-500">
-            Full labeling functionality coming in Phase 5!
-          </p>
-        </div>
-      )}
+      <LabelManagement peptides={peptides} onRefresh={onRefresh} />
     </div>
   );
 }
