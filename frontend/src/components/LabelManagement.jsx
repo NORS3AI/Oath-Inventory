@@ -19,10 +19,12 @@ export default function LabelManagement({ peptides, onRefresh }) {
 
   // Calculate priority queue
   const priorityQueue = useMemo(() => {
-    // Filter: only peptides with inventory > 0 and not yet labeled
-    const unlabeled = peptides.filter(p =>
-      (Number(p.quantity) || 0) > 0 && !p.isLabeled
-    );
+    // Filter: only peptides with inventory > 0 and not fully labeled
+    const unlabeled = peptides.filter(p => {
+      const quantity = Number(p.quantity) || 0;
+      const labeledCount = Number(p.labeledCount) || (p.isLabeled ? quantity : 0);
+      return quantity > 0 && labeledCount < quantity;
+    });
 
     // Calculate priority score for each peptide
     const withPriority = unlabeled.map(peptide => {
@@ -55,7 +57,11 @@ export default function LabelManagement({ peptides, onRefresh }) {
   }, [peptides]);
 
   const labeledPeptides = useMemo(() => {
-    return peptides.filter(p => p.isLabeled && (Number(p.quantity) || 0) > 0);
+    return peptides.filter(p => {
+      const quantity = Number(p.quantity) || 0;
+      const labeledCount = Number(p.labeledCount) || (p.isLabeled ? quantity : 0);
+      return quantity > 0 && labeledCount >= quantity;
+    });
   }, [peptides]);
 
   const stats = {
@@ -113,9 +119,14 @@ export default function LabelManagement({ peptides, onRefresh }) {
     }
 
     try {
-      // Mark as labeled
+      const quantity = Number(peptide.quantity) || 0;
+      const currentLabeled = Number(peptide.labeledCount) || 0;
+      const newLabeledCount = Math.min(currentLabeled + 1, quantity);
+
+      // Update labeled count
       await db.peptides.update(peptide.peptideId, {
-        isLabeled: true,
+        labeledCount: newLabeledCount,
+        isLabeled: newLabeledCount >= quantity,
         dateLabeled: new Date().toISOString()
       });
 
@@ -123,7 +134,7 @@ export default function LabelManagement({ peptides, onRefresh }) {
       await db.labels.setInventory(labelInventory - 1);
       setLabelInventory(labelInventory - 1);
 
-      success(`${peptide.peptideId} marked as labeled`);
+      success(`${peptide.peptideId} labeled (${newLabeledCount}/${quantity})`);
       if (onRefresh) onRefresh();
     } catch (err) {
       showError('Failed to mark peptide as labeled');
@@ -132,17 +143,22 @@ export default function LabelManagement({ peptides, onRefresh }) {
 
   const handleUnmarkLabeled = async (peptide) => {
     try {
-      // Remove label status
+      const quantity = Number(peptide.quantity) || 0;
+      const currentLabeled = Number(peptide.labeledCount) || 0;
+      const newLabeledCount = Math.max(currentLabeled - 1, 0);
+
+      // Update labeled count
       await db.peptides.update(peptide.peptideId, {
-        isLabeled: false,
-        dateLabeled: null
+        labeledCount: newLabeledCount,
+        isLabeled: newLabeledCount >= quantity,
+        dateLabeled: newLabeledCount > 0 ? new Date().toISOString() : null
       });
 
       // Increase label inventory (return the label)
       await db.labels.setInventory(labelInventory + 1);
       setLabelInventory(labelInventory + 1);
 
-      success(`Label removed from ${peptide.peptideId}`);
+      success(`Label removed from ${peptide.peptideId} (${newLabeledCount}/${quantity})`);
       if (onRefresh) onRefresh();
     } catch (err) {
       showError('Failed to remove label');

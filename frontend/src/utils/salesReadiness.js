@@ -31,7 +31,9 @@ export function checkSalesReadiness(peptide) {
   }
 
   // Check 3: Label
-  if (!peptide.isLabeled) {
+  const quantity = Number(peptide.quantity) || 0;
+  const labeledCount = Number(peptide.labeledCount) || (peptide.isLabeled ? quantity : 0);
+  if (quantity > 0 && labeledCount < quantity) {
     missing.push('Label');
   }
 

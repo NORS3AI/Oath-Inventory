@@ -12,7 +12,7 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
   const editableFields = [
     { id: 'peptideId', label: 'Product', type: 'text' },
     { id: 'peptideName', label: 'SKU', type: 'text' },
-    { id: 'isLabeled', label: 'Labeled', type: 'checkbox' },
+    { id: 'labeledCount', label: 'Labeled Count', type: 'number' },
     { id: 'quantity', label: 'Quantity', type: 'number' },
     { id: 'batchNumber', label: 'Batch #', type: 'text' },
     { id: 'netWeight', label: 'Net Weight', type: 'text' },
@@ -33,10 +33,8 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
     // Auto-save to database
     try {
       let saveValue = value;
-      if (field === 'quantity' || field === 'orderedQty') {
-        saveValue = Number(value);
-      } else if (field === 'isLabeled') {
-        saveValue = Boolean(value);
+      if (field === 'quantity' || field === 'orderedQty' || field === 'labeledCount') {
+        saveValue = Number(value) || 0;
       }
       const saveData = { [field]: saveValue };
       await db.peptides.update(peptide.peptideId, saveData);
