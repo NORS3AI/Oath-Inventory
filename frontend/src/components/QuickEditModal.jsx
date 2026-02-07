@@ -25,12 +25,12 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
     { id: 'location', label: 'Location', type: 'text' }
   ];
 
-  // Auto-save when field value changes
+  // Update form data and save to database (without triggering parent update)
   const handleFieldChange = async (field, value) => {
     const updatedData = { ...formData, [field]: value };
     setFormData(updatedData);
 
-    // Auto-save to database
+    // Auto-save to database only (don't call onUpdate to avoid closing modal)
     try {
       let saveValue = value;
       if (field === 'quantity' || field === 'orderedQty' || field === 'labeledCount') {
@@ -38,7 +38,7 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
       }
       const saveData = { [field]: saveValue };
       await db.peptides.update(peptide.peptideId, saveData);
-      if (onUpdate) onUpdate();
+      // Don't call onUpdate() here - it causes modal to close
     } catch (error) {
       console.error('Failed to save:', error);
     }
@@ -72,10 +72,11 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
     }
   };
 
-  // Close on outside click
+  // Close on outside click and trigger update
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
+        if (onUpdate) onUpdate(); // Trigger parent update when closing
         onClose();
       }
     };
@@ -87,7 +88,7 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [onClose]);
+  }, [onClose, onUpdate]);
 
   // Calculate modal position (centered on screen)
   const modalStyle = {
@@ -117,7 +118,10 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
             <p className="text-sm text-gray-600 dark:text-gray-400">{peptide.peptideId}</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (onUpdate) onUpdate();
+              onClose();
+            }}
             className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-colors"
           >
             <X className="w-5 h-5" />
