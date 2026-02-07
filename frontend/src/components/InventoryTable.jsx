@@ -13,14 +13,15 @@ const DEFAULT_COLUMNS = [
   { id: 'peptideId', label: 'Product', field: 'peptideId', sortable: true },
   { id: 'peptideName', label: 'SKU', field: 'peptideName', sortable: true },
   { id: 'quantity', label: 'Quantity', field: 'quantity', sortable: true },
-  { id: 'status', label: 'Status', field: 'status', sortable: false },
-  { id: 'batchNumber', label: 'Batch #', field: 'batchNumber', sortable: false },
-  { id: 'netWeight', label: 'Net Weight', field: 'netWeight', sortable: false },
-  { id: 'purity', label: 'Purity', field: 'purity', sortable: false },
-  { id: 'velocity', label: 'Velocity', field: 'velocity', sortable: false },
-  { id: 'orderedQty', label: 'Ordered Qty', field: 'orderedQty', sortable: false },
-  { id: 'orderedDate', label: 'Ordered Date', field: 'orderedDate', sortable: false },
-  { id: 'notes', label: 'Notes', field: 'notes', sortable: false },
+  { id: 'isLabeled', label: 'Labeled', field: 'isLabeled', sortable: true },
+  { id: 'status', label: 'Status', field: 'status', sortable: true },
+  { id: 'batchNumber', label: 'Batch #', field: 'batchNumber', sortable: true },
+  { id: 'netWeight', label: 'Net Weight', field: 'netWeight', sortable: true },
+  { id: 'purity', label: 'Purity', field: 'purity', sortable: true },
+  { id: 'velocity', label: 'Velocity', field: 'velocity', sortable: true },
+  { id: 'orderedQty', label: 'Ordered Qty', field: 'orderedQty', sortable: true },
+  { id: 'orderedDate', label: 'Ordered Date', field: 'orderedDate', sortable: true },
+  { id: 'notes', label: 'Notes', field: 'notes', sortable: true },
   { id: 'actions', label: 'Actions', field: 'actions', sortable: false }
 ];
 
@@ -121,14 +122,37 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
       let bVal = b[sortField];
 
       // Handle numeric sorting
-      if (sortField === 'quantity') {
+      if (sortField === 'quantity' || sortField === 'orderedQty') {
         aVal = Number(aVal) || 0;
         bVal = Number(bVal) || 0;
+      }
+
+      // Handle boolean sorting (labeled column)
+      if (sortField === 'isLabeled') {
+        aVal = aVal ? 1 : 0;
+        bVal = bVal ? 1 : 0;
+      }
+
+      // Handle status sorting (by priority)
+      if (sortField === 'status') {
+        const statusPriority = {
+          'OUT_OF_STOCK': 1,
+          'NEARLY_OUT': 2,
+          'LOW_STOCK': 3,
+          'GOOD_STOCK': 4,
+          'ON_ORDER': 5
+        };
+        aVal = statusPriority[aVal] || 999;
+        bVal = statusPriority[bVal] || 999;
       }
 
       // Handle string sorting
       if (typeof aVal === 'string') aVal = aVal.toLowerCase();
       if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+      // Handle null/undefined values
+      if (aVal === undefined || aVal === null || aVal === '') aVal = '';
+      if (bVal === undefined || bVal === null || bVal === '') bVal = '';
 
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
@@ -202,6 +226,18 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
       return (
         <span className={`status-badge ${statusConfig.className}`}>
           {statusConfig.label}
+        </span>
+      );
+    }
+
+    if (column.id === 'isLabeled') {
+      return (
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+          peptide.isLabeled
+            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+        }`}>
+          {peptide.isLabeled ? 'Yes' : 'No'}
         </span>
       );
     }

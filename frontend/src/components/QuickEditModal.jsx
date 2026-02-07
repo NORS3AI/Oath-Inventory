@@ -12,6 +12,7 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
   const editableFields = [
     { id: 'peptideId', label: 'Product', type: 'text' },
     { id: 'peptideName', label: 'SKU', type: 'text' },
+    { id: 'isLabeled', label: 'Labeled', type: 'checkbox' },
     { id: 'quantity', label: 'Quantity', type: 'number' },
     { id: 'batchNumber', label: 'Batch #', type: 'text' },
     { id: 'netWeight', label: 'Net Weight', type: 'text' },
@@ -31,7 +32,13 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
 
     // Auto-save to database
     try {
-      const saveData = { [field]: field === 'quantity' || field === 'orderedQty' ? Number(value) : value };
+      let saveValue = value;
+      if (field === 'quantity' || field === 'orderedQty') {
+        saveValue = Number(value);
+      } else if (field === 'isLabeled') {
+        saveValue = Boolean(value);
+      }
+      const saveData = { [field]: saveValue };
       await db.peptides.update(peptide.peptideId, saveData);
       if (onUpdate) onUpdate();
     } catch (error) {
@@ -156,6 +163,21 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
                   placeholder={`Enter ${field.label.toLowerCase()}`}
                   autoFocus
                 />
+              ) : field.type === 'checkbox' ? (
+                <div className="flex items-center space-x-3">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData[field.id] || false}
+                      onChange={(e) => handleFieldChange(field.id, e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+                    <span className="ml-3 text-sm font-medium text-gray-900">
+                      {formData[field.id] ? 'Yes' : 'No'}
+                    </span>
+                  </label>
+                </div>
               ) : (
                 <input
                   type={field.type}
