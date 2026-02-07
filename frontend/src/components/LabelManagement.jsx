@@ -27,6 +27,7 @@ export default function LabelManagement({ peptides, onRefresh }) {
   // Calculate priority queue
   const priorityQueue = useMemo(() => {
     // Filter: only peptides with inventory > 0 and not fully labeled
+    // Exclude products with 0 quantity (no stock)
     const unlabeled = localPeptides.filter(p => {
       const quantity = Number(p.quantity) || 0;
       const labeledCount = Number(p.labeledCount) || (p.isLabeled ? quantity : 0);
@@ -64,19 +65,41 @@ export default function LabelManagement({ peptides, onRefresh }) {
   }, [localPeptides]);
 
   const labeledPeptides = useMemo(() => {
-    return localPeptides.filter(p => {
+    const labeled = localPeptides.filter(p => {
       const quantity = Number(p.quantity) || 0;
       const labeledCount = Number(p.labeledCount) || (p.isLabeled ? quantity : 0);
       return quantity > 0 && labeledCount >= quantity;
     });
+
+    // Sort by date labeled (most recent first) and take top 10
+    return labeled
+      .sort((a, b) => {
+        const dateA = a.dateLabeled ? new Date(a.dateLabeled).getTime() : 0;
+        const dateB = b.dateLabeled ? new Date(b.dateLabeled).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 10);
   }, [localPeptides]);
 
-  const stats = {
-    totalUnlabeled: priorityQueue.length,
-    totalLabeled: labeledPeptides.length,
-    readyForSales: priorityQueue.filter(p => p.readyForSales).length,
-    labelInventory
-  };
+  const stats = useMemo(() => {
+    const totalWithStock = localPeptides.filter(p => (Number(p.quantity) || 0) > 0).length;
+    const fullyLabeled = localPeptides.filter(p => {
+      const quantity = Number(p.quantity) || 0;
+      const labeledCount = Number(p.labeledCount) || (p.isLabeled ? quantity : 0);
+      return quantity > 0 && labeledCount >= quantity;
+    }).length;
+
+    const labelingProgress = totalWithStock > 0 ? Math.round((fullyLabeled / totalWithStock) * 100) : 0;
+
+    return {
+      totalUnlabeled: priorityQueue.length,
+      totalLabeled: fullyLabeled,
+      totalWithStock,
+      labelingProgress,
+      readyForSales: priorityQueue.filter(p => p.readyForSales).length,
+      labelInventory
+    };
+  }, [localPeptides, priorityQueue, labelInventory]);
 
   const handleAddLabels = async () => {
     const amount = parseInt(adjustAmount);
@@ -200,35 +223,61 @@ export default function LabelManagement({ peptides, onRefresh }) {
 
   return (
     <div className="space-y-6">
+      {/* Labeling Progress Overview */}
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg shadow p-6 border border-purple-200 dark:border-purple-800">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Overall Labeling Progress</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600 dark:text-gray-400">
+              {stats.totalLabeled} of {stats.totalWithStock} products fully labeled
+            </span>
+            <span className="font-bold text-purple-600 dark:text-purple-400">{stats.labelingProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+            <div
+              className="bg-gradient-to-r from-purple-600 to-blue-600 h-4 rounded-full transition-all duration-500"
+              style={{ width: `${stats.labelingProgress}%` }}
+            ></div>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.totalUnlabeled}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Need Labels</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.totalLabeled}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Fully Labeled</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.labelInventory}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Labels Available</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Label Inventory"
-          value={stats.labelInventory}
-          subtitle="Available"
-          icon={<Tags className="w-8 h-8 text-purple-600" />}
-          color="purple"
-        />
-        <StatCard
-          title="Need Labels"
-          value={stats.totalUnlabeled}
-          subtitle="In queue"
-          icon={<Package className="w-8 h-8 text-orange-600" />}
-          color="orange"
-        />
-        <StatCard
-          title="Already Labeled"
-          value={stats.totalLabeled}
-          subtitle="Complete"
-          icon={<CheckCircle className="w-8 h-8 text-green-600" />}
-          color="green"
-        />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           title="Ready for Sales"
           value={stats.readyForSales}
-          subtitle="After labeling"
-          icon={<TrendingUp className="w-8 h-8 text-blue-600" />}
+          subtitle="Will be sales-ready after labeling"
+          icon={<TrendingUp className="w-8 h-8 text-blue-600 dark:text-blue-400" />}
           color="blue"
+        />
+        <StatCard
+          title="In Queue"
+          value={stats.totalUnlabeled}
+          subtitle="Products waiting for labels"
+          icon={<Package className="w-8 h-8 text-orange-600 dark:text-orange-400" />}
+          color="orange"
+        />
+        <StatCard
+          title="Completed"
+          value={stats.totalLabeled}
+          subtitle="Fully labeled products"
+          icon={<CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />}
+          color="green"
         />
       </div>
 
@@ -398,16 +447,21 @@ export default function LabelManagement({ peptides, onRefresh }) {
         )}
       </div>
 
-      {/* Labeled Peptides */}
+      {/* Recently Labeled - Top 10 */}
       {labeledPeptides.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Labeled Peptides
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {labeledPeptides.length} item{labeledPeptides.length !== 1 ? 's' : ''} currently labeled
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Recently Labeled Products
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Top 10 most recently labeled items
+                </p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-500" />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
