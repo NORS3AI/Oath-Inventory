@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban } from 'lucide-react';
+import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban, TrendingDown } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
@@ -7,6 +7,7 @@ import OrderManagement from './OrderManagement';
 import QuickEditModal from './QuickEditModal';
 import ColumnReorderModal from './ColumnReorderModal';
 import ExclusionManager from './ExclusionManager';
+import RecordSaleModal from './RecordSaleModal';
 
 // Define all available columns
 const DEFAULT_COLUMNS = [
@@ -35,6 +36,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [draggedColumn, setDraggedColumn] = useState(null);
   const [selectedPeptide, setSelectedPeptide] = useState(null);
   const [quickEditPeptide, setQuickEditPeptide] = useState(null);
+  const [recordSalePeptide, setRecordSalePeptide] = useState(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showExclusionsModal, setShowExclusionsModal] = useState(false);
 
@@ -262,16 +264,28 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
 
     if (column.id === 'actions') {
       return (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedPeptide(peptide);
-          }}
-          className="inline-flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-        >
-          <MoreVertical className="w-4 h-4" />
-          <span>Manage</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setRecordSalePeptide(peptide);
+            }}
+            className="inline-flex items-center space-x-1 px-2 py-1 text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+            title="Record Sale"
+          >
+            <TrendingDown className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedPeptide(peptide);
+            }}
+            className="inline-flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+          >
+            <MoreVertical className="w-4 h-4" />
+            <span>Manage</span>
+          </button>
+        </div>
       );
     }
 
@@ -461,6 +475,15 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         onClose={() => setShowExclusionsModal(false)}
         onUpdate={onRefresh}
       />
+
+      {/* Record Sale Modal */}
+      {recordSalePeptide && (
+        <RecordSaleModal
+          peptide={recordSalePeptide}
+          onClose={() => setRecordSalePeptide(null)}
+          onComplete={onRefresh}
+        />
+      )}
     </div>
   );
 }

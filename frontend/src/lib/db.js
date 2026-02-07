@@ -25,6 +25,12 @@ const settingsStore = localforage.createInstance({
   description: 'Application settings and configuration'
 });
 
+const transactionStore = localforage.createInstance({
+  name: 'OathInventory',
+  storeName: 'transactions',
+  description: 'Sales and usage transactions for velocity tracking'
+});
+
 /**
  * Database service for Oath Inventory System
  * Uses IndexedDB via localforage for client-side data persistence
@@ -211,12 +217,77 @@ export const db = {
     }
   },
 
+  // Transaction operations (for sales velocity tracking)
+  transactions: {
+    async getAll() {
+      const transactions = [];
+      await transactionStore.iterate((value) => {
+        transactions.push(value);
+      });
+      return transactions.sort((a, b) =>
+        new Date(b.date || 0) - new Date(a.date || 0)
+      );
+    },
+
+    async getByPeptideId(peptideId) {
+      const transactions = [];
+      await transactionStore.iterate((value) => {
+        if (value.peptideId === peptideId) {
+          transactions.push(value);
+        }
+      });
+      return transactions.sort((a, b) =>
+        new Date(a.date || 0) - new Date(b.date || 0)
+      );
+    },
+
+    async getByDateRange(startDate, endDate) {
+      const transactions = [];
+      const start = new Date(startDate).getTime();
+      const end = new Date(endDate).getTime();
+
+      await transactionStore.iterate((value) => {
+        const txDate = new Date(value.date).getTime();
+        if (txDate >= start && txDate <= end) {
+          transactions.push(value);
+        }
+      });
+      return transactions.sort((a, b) =>
+        new Date(a.date || 0) - new Date(b.date || 0)
+      );
+    },
+
+    async record(peptideId, quantity, type = 'sale', notes = '') {
+      const id = `${peptideId}-${Date.now()}`;
+      const transaction = {
+        id,
+        peptideId,
+        quantity: Number(quantity),
+        type, // 'sale', 'adjustment', 'return', etc.
+        date: new Date().toISOString(),
+        notes,
+        createdAt: new Date().toISOString()
+      };
+
+      return await transactionStore.setItem(id, transaction);
+    },
+
+    async delete(id) {
+      return await transactionStore.removeItem(id);
+    },
+
+    async clear() {
+      return await transactionStore.clear();
+    }
+  },
+
   // Utility operations
   async clearAll() {
     await peptideStore.clear();
     await orderStore.clear();
     await labelStore.clear();
     await settingsStore.clear();
+    await transactionStore.clear();
   },
 
   async exportData() {
@@ -224,6 +295,7 @@ export const db = {
     const orders = await this.orders.getAll();
     const labels = await this.labels.getLabeled();
     const settings = await this.settings.getAll();
+    const transactions = await this.transactions.getAll();
 
     return {
       version: '1.0',
@@ -232,7 +304,8 @@ export const db = {
         peptides,
         orders,
         labels,
-        settings
+        settings,
+        transactions
       }
     };
   },
@@ -240,7 +313,7 @@ export const db = {
   async importData(exportedData) {
     if (!exportedData.data) throw new Error('Invalid export data format');
 
-    const { peptides, orders, labels, settings } = exportedData.data;
+    const { peptides, orders, labels, settings, transactions } = exportedData.data;
 
     // Import peptides
     if (peptides) {
@@ -268,6 +341,13 @@ export const db = {
     if (settings) {
       for (const [key, value] of Object.entries(settings)) {
         await this.settings.set(key, value);
+      }
+    }
+
+    // Import transactions
+    if (transactions) {
+      for (const transaction of transactions) {
+        await transactionStore.setItem(transaction.id, transaction);
       }
     }
 
