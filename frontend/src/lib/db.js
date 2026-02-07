@@ -31,6 +31,12 @@ const transactionStore = localforage.createInstance({
   description: 'Sales and usage transactions for velocity tracking'
 });
 
+const velocityHistoryStore = localforage.createInstance({
+  name: 'OathInventory',
+  storeName: 'velocityHistory',
+  description: 'Historical velocity data for trend tracking'
+});
+
 /**
  * Database service for Oath Inventory System
  * Uses IndexedDB via localforage for client-side data persistence
@@ -281,6 +287,126 @@ export const db = {
     }
   },
 
+  // Velocity History operations
+  velocityHistory: {
+    /**
+     * Get velocity history for a specific peptide
+     * @param {string} peptideId - Peptide ID to get history for
+     * @returns {Promise<array>} Array of velocity history entries
+     */
+    async get(peptideId) {
+      const history = await velocityHistoryStore.getItem(peptideId);
+      return history || [];
+    },
+
+    /**
+     * Add velocity entry to history (only if changed)
+     * Keeps up to 10 most recent entries
+     * @param {string} peptideId - Peptide ID
+     * @param {string} velocity - New velocity value
+     * @returns {Promise<array>} Updated history
+     */
+    async add(peptideId, velocity) {
+      if (!velocity) return await this.get(peptideId);
+
+      const history = await this.get(peptideId);
+
+      // Only add if velocity changed from the most recent entry
+      if (history.length > 0 && history[history.length - 1].velocity === velocity) {
+        return history; // No change, don't add duplicate
+      }
+
+      const entry = {
+        velocity,
+        timestamp: new Date().toISOString(),
+        importDate: new Date().toISOString()
+      };
+
+      history.push(entry);
+
+      // Keep only the last 10 entries
+      const trimmedHistory = history.slice(-10);
+
+      await velocityHistoryStore.setItem(peptideId, trimmedHistory);
+      return trimmedHistory;
+    },
+
+    /**
+     * Get the most recent velocity for a peptide
+     * @param {string} peptideId - Peptide ID
+     * @returns {Promise<string|null>} Most recent velocity or null
+     */
+    async getLatest(peptideId) {
+      const history = await this.get(peptideId);
+      if (history.length === 0) return null;
+      return history[history.length - 1].velocity;
+    },
+
+    /**
+     * Get velocity comparison between current and previous
+     * @param {string} peptideId - Peptide ID
+     * @returns {Promise<object>} Comparison object with current, previous, and changed flag
+     */
+    async getComparison(peptideId) {
+      const history = await this.get(peptideId);
+      if (history.length === 0) {
+        return { current: null, previous: null, changed: false, trend: 'new' };
+      }
+
+      const current = history[history.length - 1].velocity;
+      const previous = history.length > 1 ? history[history.length - 2].velocity : null;
+
+      return {
+        current,
+        previous,
+        changed: previous !== null && current !== previous,
+        trend: this._analyzeTrend(current, previous),
+        history: history.slice(-5) // Return last 5 for context
+      };
+    },
+
+    /**
+     * Analyze velocity trend
+     * @private
+     */
+    _analyzeTrend(current, previous) {
+      if (!previous) return 'new';
+      if (!current) return 'unknown';
+
+      // Simple trend analysis - you can enhance this based on your velocity format
+      const currentLower = current.toLowerCase();
+      const previousLower = previous.toLowerCase();
+
+      if (currentLower === previousLower) return 'stable';
+
+      // If velocity values are numeric, compare them
+      const currentNum = parseFloat(current);
+      const previousNum = parseFloat(previous);
+
+      if (!isNaN(currentNum) && !isNaN(previousNum)) {
+        if (currentNum > previousNum) return 'increasing';
+        if (currentNum < previousNum) return 'decreasing';
+        return 'stable';
+      }
+
+      return 'changed';
+    },
+
+    /**
+     * Clear history for a specific peptide
+     */
+    async clear(peptideId) {
+      return await velocityHistoryStore.removeItem(peptideId);
+    },
+
+    /**
+     * Clear all velocity history
+     */
+    async clearAll() {
+      return await velocityHistoryStore.clear();
+    }
+  },
+
   // Utility operations
   async clearAll() {
     await peptideStore.clear();
@@ -288,6 +414,7 @@ export const db = {
     await labelStore.clear();
     await settingsStore.clear();
     await transactionStore.clear();
+    await velocityHistoryStore.clear();
   },
 
   async exportData() {
@@ -297,6 +424,15 @@ export const db = {
     const settings = await this.settings.getAll();
     const transactions = await this.transactions.getAll();
 
+    // Export velocity history for all peptides
+    const velocityHistory = {};
+    for (const peptide of peptides) {
+      const history = await this.velocityHistory.get(peptide.id);
+      if (history && history.length > 0) {
+        velocityHistory[peptide.id] = history;
+      }
+    }
+
     return {
       version: '1.0',
       exportDate: new Date().toISOString(),
@@ -305,7 +441,8 @@ export const db = {
         orders,
         labels,
         settings,
-        transactions
+        transactions,
+        velocityHistory
       }
     };
   },
@@ -313,7 +450,7 @@ export const db = {
   async importData(exportedData) {
     if (!exportedData.data) throw new Error('Invalid export data format');
 
-    const { peptides, orders, labels, settings, transactions } = exportedData.data;
+    const { peptides, orders, labels, settings, transactions, velocityHistory } = exportedData.data;
 
     // Import peptides
     if (peptides) {
@@ -348,6 +485,13 @@ export const db = {
     if (transactions) {
       for (const transaction of transactions) {
         await transactionStore.setItem(transaction.id, transaction);
+      }
+    }
+
+    // Import velocity history
+    if (velocityHistory) {
+      for (const [peptideId, history] of Object.entries(velocityHistory)) {
+        await velocityHistoryStore.setItem(peptideId, history);
       }
     }
 
