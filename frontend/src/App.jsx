@@ -97,12 +97,6 @@ function App() {
               active={activeTab === 'reports'}
               onClick={() => setActiveTab('reports')}
             />
-            <NavButton
-              icon={<Upload className="w-5 h-5" />}
-              label="Import CSV"
-              active={activeTab === 'import'}
-              onClick={() => setActiveTab('import')}
-            />
           </div>
         </div>
       </nav>
@@ -127,7 +121,6 @@ function App() {
             {activeTab === 'labeling' && <LabelingView peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
             {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
-            {activeTab === 'import' && <ImportView onImportComplete={handleImportComplete} />}
           </>
         )}
       </main>
