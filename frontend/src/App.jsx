@@ -11,10 +11,18 @@ import Reports from './components/Reports';
 import LabelManagement from './components/LabelManagement';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Restore active tab from localStorage on page load
+    return localStorage.getItem('activeTab') || 'dashboard';
+  });
   const { peptides, loading, thresholds, stats, refresh } = useInventory();
   const { isDark, toggle } = useDarkMode();
   const [orders, setOrders] = useState([]);
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab);
+  }, [activeTab]);
 
   // Load orders
   useEffect(() => {
