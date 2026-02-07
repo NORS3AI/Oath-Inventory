@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
-import { Download, TrendingUp, Clock, Package, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Download, TrendingUp, Clock, Package, CheckCircle, AlertTriangle, FileText, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon, AreaChart as AreaChartIcon } from 'lucide-react';
+import { PieChart, Pie, BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { calculateStockStatus } from '../utils/stockStatus';
 import { checkSalesReadiness } from '../utils/salesReadiness';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 
 export default function Reports({ peptides, orders = [], thresholds }) {
+  const [chartType, setChartType] = useState('pie'); // pie, bar, line, area
+
   // Calculate comprehensive statistics
   const stats = useMemo(() => {
     const peptidesWithStatus = peptides.map(p => ({
@@ -99,6 +102,34 @@ export default function Reports({ peptides, orders = [], thresholds }) {
       completedOrders: completedOrders.length
     };
   }, [peptides, orders, thresholds]);
+
+  // Chart data
+  const chartData = useMemo(() => {
+    const COLORS = {
+      outOfStock: '#ef4444',
+      nearlyOut: '#f97316',
+      lowStock: '#eab308',
+      goodStock: '#22c55e',
+      onOrder: '#14b8a6'
+    };
+
+    // Stock Status Data
+    const stockData = [
+      { name: 'Out of Stock', value: stats.statusCounts.outOfStock, color: COLORS.outOfStock },
+      { name: 'Nearly Out', value: stats.statusCounts.nearlyOut, color: COLORS.nearlyOut },
+      { name: 'Low Stock', value: stats.statusCounts.lowStock, color: COLORS.lowStock },
+      { name: 'Good Stock', value: stats.statusCounts.goodStock, color: COLORS.goodStock },
+      { name: 'On Order', value: stats.statusCounts.onOrder, color: COLORS.onOrder }
+    ].filter(d => d.value > 0);
+
+    // Sales Readiness Data
+    const salesData = [
+      { name: 'Sales Ready', value: stats.salesReadyCount, color: '#22c55e' },
+      { name: 'Need Attention', value: stats.total - stats.salesReadyCount, color: '#f97316' }
+    ].filter(d => d.value > 0);
+
+    return { stockData, salesData, COLORS };
+  }, [stats]);
 
   const handleExportInventory = () => {
     const csvContent = exportToCSV(peptides);
@@ -258,6 +289,179 @@ ${stats.needsAttention.map(p =>
             total={stats.total}
             color="bg-teal-500"
           />
+        </div>
+      </div>
+
+      {/* Interactive Charts */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 sm:mb-0">
+            Data Visualizations
+          </h3>
+
+          {/* Chart Type Toggle */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setChartType('pie')}
+              className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                chartType === 'pie'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              <PieChartIcon className="w-4 h-4" />
+              <span className="text-sm font-medium">Pie</span>
+            </button>
+            <button
+              onClick={() => setChartType('bar')}
+              className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                chartType === 'bar'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="text-sm font-medium">Bar</span>
+            </button>
+            <button
+              onClick={() => setChartType('line')}
+              className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                chartType === 'line'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              <LineChartIcon className="w-4 h-4" />
+              <span className="text-sm font-medium">Line</span>
+            </button>
+            <button
+              onClick={() => setChartType('area')}
+              className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                chartType === 'area'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              <AreaChartIcon className="w-4 h-4" />
+              <span className="text-sm font-medium">Area</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Stock Status Chart */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Stock Status Distribution</h4>
+            <ResponsiveContainer width="100%" height={300}>
+              {chartType === 'pie' ? (
+                <PieChart>
+                  <Pie
+                    data={chartData.stockData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.stockData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              ) : chartType === 'bar' ? (
+                <BarChart data={chartData.stockData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Legend />
+                  <Bar dataKey="value" name="Count">
+                    {chartData.stockData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              ) : chartType === 'line' ? (
+                <LineChart data={chartData.stockData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} name="Count" />
+                </LineChart>
+              ) : (
+                <AreaChart data={chartData.stockData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Legend />
+                  <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="Count" />
+                </AreaChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+
+          {/* Sales Readiness Chart */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Sales Readiness Status</h4>
+            <ResponsiveContainer width="100%" height={300}>
+              {chartType === 'pie' ? (
+                <PieChart>
+                  <Pie
+                    data={chartData.salesData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.salesData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              ) : chartType === 'bar' ? (
+                <BarChart data={chartData.salesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Legend />
+                  <Bar dataKey="value" name="Count">
+                    {chartData.salesData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              ) : chartType === 'line' ? (
+                <LineChart data={chartData.salesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2} name="Count" />
+                </LineChart>
+              ) : (
+                <AreaChart data={chartData.salesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Legend />
+                  <Area type="monotone" dataKey="value" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} name="Count" />
+                </AreaChart>
+              )}
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
