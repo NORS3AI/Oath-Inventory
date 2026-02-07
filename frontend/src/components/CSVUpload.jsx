@@ -9,9 +9,11 @@ export default function CSVUpload({ onImportComplete }) {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [importMode, setImportMode] = useState('replace'); // 'replace' or 'update'
+  const [importMode, setImportMode] = useState('update'); // 'replace' or 'update' - default to 'update'
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -48,6 +50,31 @@ export default function CSVUpload({ onImportComplete }) {
       return;
     }
 
+    // If replace mode, show confirmation dialog first
+    if (importMode === 'replace') {
+      setPendingFile(file);
+      setShowReplaceConfirm(true);
+      return;
+    }
+
+    // Otherwise proceed with import
+    await processFile(file);
+  };
+
+  const handleReplaceConfirm = async () => {
+    setShowReplaceConfirm(false);
+    if (pendingFile) {
+      await processFile(pendingFile);
+      setPendingFile(null);
+    }
+  };
+
+  const handleReplaceCancel = () => {
+    setShowReplaceConfirm(false);
+    setPendingFile(null);
+  };
+
+  const processFile = async (file) => {
     setImporting(true);
     setError(null);
     setResult(null);
@@ -268,6 +295,40 @@ export default function CSVUpload({ onImportComplete }) {
         </button>
       </div>
 
+      {/* Replace All Confirmation Dialog */}
+      {showReplaceConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-start space-x-4">
+              <AlertTriangle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Replace All Inventory?
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  This will delete all existing inventory data and replace it with the data from this CSV file.
+                  Any manually edited fields will be lost.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleReplaceConfirm}
+                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium"
+                  >
+                    Yes, Replace All
+                  </button>
+                  <button
+                    onClick={handleReplaceCancel}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Clear Confirmation Dialog */}
       {showClearConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -292,7 +353,7 @@ export default function CSVUpload({ onImportComplete }) {
                   <button
                     onClick={() => setShowClearConfirm(false)}
                     disabled={clearing}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
                   >
                     Cancel
                   </button>
