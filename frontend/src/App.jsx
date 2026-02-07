@@ -1,12 +1,29 @@
-import { useState } from 'react';
-import { Package, Upload, Tags, CheckCircle, BarChart3 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, Upload, Tags, CheckCircle, BarChart3, Moon, Sun, FileText } from 'lucide-react';
 import { useInventory } from './hooks/useInventory';
+import { useDarkMode } from './hooks/useDarkMode';
+import { ToastProvider } from './components/Toast';
+import { db } from './lib/db';
 import CSVUpload from './components/CSVUpload';
 import InventoryTable from './components/InventoryTable';
+import SalesReady from './components/SalesReady';
+import Reports from './components/Reports';
+import LabelManagement from './components/LabelManagement';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { peptides, loading, thresholds, stats, refresh } = useInventory();
+  const { isDark, toggle } = useDarkMode();
+  const [orders, setOrders] = useState([]);
+
+  // Load orders
+  useEffect(() => {
+    const loadOrders = async () => {
+      const allOrders = await db.orders.getAll();
+      setOrders(allOrders);
+    };
+    loadOrders();
+  }, [peptides]); // Reload when peptides change
 
   const handleImportComplete = () => {
     refresh();
@@ -14,27 +31,39 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <ToastProvider>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Package className="w-8 h-8 text-blue-600" />
+              <Package className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Oath Research</h1>
-                <p className="text-sm text-gray-600">Peptide Inventory System</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Oath Research</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Peptide Inventory System</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">v1.0.0</span>
+              <button
+                onClick={toggle}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {isDark ? (
+                  <Sun className="w-5 h-5 text-yellow-500" />
+                ) : (
+                  <Moon className="w-5 h-5 text-gray-600" />
+                )}
+              </button>
+              <span className="text-sm text-gray-600 dark:text-gray-400">v1.0.0</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200">
+      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
             <NavButton
@@ -63,10 +92,10 @@ function App() {
               onClick={() => setActiveTab('sales')}
             />
             <NavButton
-              icon={<Upload className="w-5 h-5" />}
-              label="Import CSV"
-              active={activeTab === 'import'}
-              onClick={() => setActiveTab('import')}
+              icon={<FileText className="w-5 h-5" />}
+              label="Reports"
+              active={activeTab === 'reports'}
+              onClick={() => setActiveTab('reports')}
             />
           </div>
         </div>
@@ -76,8 +105,8 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading ? (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
           </div>
         ) : (
           <>
@@ -89,22 +118,23 @@ function App() {
                 onRefresh={refresh}
               />
             )}
-            {activeTab === 'labeling' && <LabelingView peptides={peptides} />}
-            {activeTab === 'sales' && <SalesReadyView />}
-            {activeTab === 'import' && <ImportView onImportComplete={handleImportComplete} />}
+            {activeTab === 'labeling' && <LabelingView peptides={peptides} onRefresh={refresh} />}
+            {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
+            {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
           </>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-12">
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
             © 2026 Oath Research. Peptide Inventory Management System.
           </p>
         </div>
       </footer>
     </div>
+    </ToastProvider>
   );
 }
 
@@ -115,15 +145,15 @@ function NavButton({ icon, label, active, onClick, badge }) {
       className={`
         flex items-center space-x-2 px-3 py-4 border-b-2 font-medium text-sm transition-colors relative
         ${active
-          ? 'border-blue-600 text-blue-600'
-          : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+          ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+          : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
         }
       `}
     >
       {icon}
       <span>{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+        <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
           {badge}
         </span>
       )}
@@ -135,8 +165,8 @@ function DashboardView({ stats }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-        <p className="text-gray-600 mt-1">Overview of your peptide inventory</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Overview of your peptide inventory</p>
       </div>
 
       {/* Status Legend */}
@@ -246,8 +276,8 @@ function InventoryView({ peptides, thresholds, onRefresh }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Inventory</h2>
-          <p className="text-gray-600 mt-1">Manage your peptide stock levels</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your peptide stock levels</p>
         </div>
       </div>
       <InventoryTable
@@ -259,48 +289,26 @@ function InventoryView({ peptides, thresholds, onRefresh }) {
   );
 }
 
-function LabelingView({ peptides }) {
-  const peptidesNeedingLabels = peptides.filter(p => p.quantity > 0);
-
+function LabelingView({ peptides, onRefresh }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Labeling Queue</h2>
-        <p className="text-gray-600 mt-1">Track peptides that need to be labeled</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Label Management</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage label inventory and apply labels to peptides</p>
       </div>
-      {peptidesNeedingLabels.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <Tags className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No labeling tasks yet. Import inventory to see what needs labels.</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-600 mb-4">
-            {peptidesNeedingLabels.length} peptide{peptidesNeedingLabels.length !== 1 ? 's' : ''} with inventory
-          </p>
-          <p className="text-sm text-gray-500">
-            Full labeling functionality coming in Phase 5!
-          </p>
-        </div>
-      )}
+      <LabelManagement peptides={peptides} onRefresh={onRefresh} />
     </div>
   );
 }
 
-function SalesReadyView() {
+function SalesReadyView({ peptides }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Sales Ready</h2>
-        <p className="text-gray-600 mt-1">Peptides ready for sale (tested & labeled)</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sales Ready Validation</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Three-point check: Purity, Net Weight, and Label</p>
       </div>
-      <div className="bg-white rounded-lg shadow p-8 text-center">
-        <CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600 mb-2">No sales-ready peptides yet.</p>
-        <p className="text-sm text-gray-500">
-          Sales readiness validation coming in Phase 6!
-        </p>
-      </div>
+      <SalesReady peptides={peptides} />
     </div>
   );
 }
@@ -309,10 +317,22 @@ function ImportView({ onImportComplete }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Import CSV</h2>
-        <p className="text-gray-600 mt-1">Upload your inventory CSV file</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Import CSV</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Upload your inventory CSV file</p>
       </div>
       <CSVUpload onImportComplete={onImportComplete} />
+    </div>
+  );
+}
+
+function ReportsView({ peptides, orders, thresholds }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & Analytics</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Comprehensive inventory analysis and exports</p>
+      </div>
+      <Reports peptides={peptides} orders={orders} thresholds={thresholds} />
     </div>
   );
 }

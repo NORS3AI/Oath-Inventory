@@ -53,10 +53,27 @@ export async function parseInventoryCSV(file, options = {}) {
  * @returns {array} Transformed peptide objects
  */
 export function transformPeptideData(rawData, options = {}) {
-  const { fieldMapping = getDefaultFieldMapping() } = options;
+  const { fieldMapping = getDefaultFieldMapping(), excludedProducts = [] } = options;
+
+  // Convert exclusion strings to case-insensitive regex patterns
+  const excludedPatterns = excludedProducts.map(pattern => {
+    // Escape special regex characters except for common ones we want to keep
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Allow flexible whitespace matching
+    const flexible = escaped.replace(/\s+/g, '\\s*');
+    return new RegExp(`^${flexible}$`, 'i');
+  });
 
   return rawData
     .filter(row => row && Object.keys(row).length > 0)
+    .filter(row => {
+      // Filter out excluded products
+      const productId = extractField(row, fieldMapping.peptideId);
+      if (!productId) return true; // Keep rows without product ID for validation
+
+      // Check if product ID matches any excluded pattern
+      return !excludedPatterns.some(pattern => pattern.test(productId));
+    })
     .map((row, index) => {
       const peptide = {
         // Core fields
@@ -65,8 +82,18 @@ export function transformPeptideData(rawData, options = {}) {
         quantity: parseNumber(extractField(row, fieldMapping.quantity)),
         unit: extractField(row, fieldMapping.unit) || 'mg',
 
-        // Optional fields
-        category: extractField(row, fieldMapping.category),
+        // Lifecycle & Testing fields
+        batchNumber: extractField(row, fieldMapping.batchNumber),
+        purity: extractField(row, fieldMapping.purity),
+        netWeight: extractField(row, fieldMapping.netWeight),
+
+        // Order tracking fields
+        orderedDate: extractField(row, fieldMapping.orderedDate),
+        orderedQty: parseNumber(extractField(row, fieldMapping.orderedQty)),
+
+        // Operational fields
+        velocity: extractField(row, fieldMapping.velocity),
+        notes: extractField(row, fieldMapping.notes),
         supplier: extractField(row, fieldMapping.supplier),
         location: extractField(row, fieldMapping.location),
 
@@ -135,11 +162,24 @@ function parseNumber(value) {
  */
 export function getDefaultFieldMapping() {
   return {
-    peptideId: ['Peptide ID', 'ID', 'Item ID', 'Product ID', 'SKU'],
-    peptideName: ['Peptide Name', 'Name', 'Product Name', 'Item Name', 'Description'],
+    // Core identification - maps to your CSV columns
+    peptideId: ['Product', 'Peptide ID', 'ID', 'Item ID'],
+    peptideName: ['SKU', 'Peptide Name', 'Name', 'Product Name'],
     quantity: ['Quantity', 'Qty', 'On Hand', 'Stock', 'Available', 'Amount'],
     unit: ['Unit', 'UOM', 'Unit of Measure'],
-    category: ['Category', 'Type', 'Class', 'Group'],
+
+    // Lifecycle & Testing
+    batchNumber: ['Batch Number', 'Batch', 'Batch #', 'Lot Number', 'Lot'],
+    purity: ['Purity', 'Purity %', 'Purity Percentage'],
+    netWeight: ['Size', 'Net Weight', 'Weight', 'Net Wt'],
+
+    // Order tracking
+    orderedDate: ['Incoming Arrival', 'Ordered Date', 'Order Date', 'Date Ordered'],
+    orderedQty: ['Incoming Qty', 'Ordered Qty', 'Order Quantity', 'Qty Ordered'],
+
+    // Operational
+    velocity: ['Velocity', 'Usage Rate', 'Demand'],
+    notes: ['Status', 'Notes', 'Comments', 'Remarks'],
     supplier: ['Supplier', 'Vendor', 'Manufacturer', 'Lab'],
     location: ['Location', 'Warehouse', 'Storage', 'Bin']
   };
@@ -180,9 +220,7 @@ export function validatePeptideData(peptides) {
       errors.push(`Row ${rowNum}: Quantity must be a number`);
     }
 
-    if (peptide.quantity < 0) {
-      errors.push(`Row ${rowNum}: Quantity cannot be negative`);
-    }
+    // Note: Negative quantities are allowed for back-ordering
   });
 
   return {
