@@ -165,22 +165,22 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Order Lifecycle Tracking</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Order Lifecycle Tracking</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               {peptide?.peptideId} - {peptide?.peptideName}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 overflow-x-auto">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -189,8 +189,8 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -211,22 +211,22 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
           {/* Place Order */}
           {activeTab === 'place-order' && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">Record when you place an order for this peptide</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Record when you place an order for this peptide</p>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Date Ordered *
                 </label>
                 <input
                   type="date"
                   value={formData.dateOrdered}
                   onChange={(e) => handleChange('dateOrdered', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Quantity Ordered (mg) *
                 </label>
                 <input
@@ -234,12 +234,12 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
                   value={formData.quantityOrdered}
                   onChange={(e) => handleChange('quantityOrdered', e.target.value)}
                   placeholder="Enter quantity"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Supplier
                 </label>
                 <input
@@ -247,7 +247,7 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
                   value={formData.supplier}
                   onChange={(e) => handleChange('supplier', e.target.value)}
                   placeholder="Lab or supplier name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -264,22 +264,22 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
           {/* Receive Shipment */}
           {activeTab === 'receive' && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">Record when the shipment arrives from the lab</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Record when the shipment arrives from the lab</p>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Date Arrived *
                 </label>
                 <input
                   type="date"
                   value={formData.dateArrived}
                   onChange={(e) => handleChange('dateArrived', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Batch Number *
                 </label>
                 <input
@@ -287,12 +287,12 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
                   value={formData.batchNumber}
                   onChange={(e) => handleChange('batchNumber', e.target.value)}
                   placeholder="Enter batch number"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Received Quantity (mg) *
                 </label>
                 <input
@@ -300,7 +300,7 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
                   value={formData.receivedQuantity}
                   onChange={(e) => handleChange('receivedQuantity', e.target.value)}
                   placeholder="Actual quantity received"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -317,22 +317,22 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
           {/* Send for Testing */}
           {activeTab === 'testing' && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">Record when you send the batch for testing</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Record when you send the batch for testing</p>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Date Sent for Testing *
                 </label>
                 <input
                   type="date"
                   value={formData.dateSentForTesting}
                   onChange={(e) => handleChange('dateSentForTesting', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Testing Facility
                 </label>
                 <input
@@ -340,7 +340,7 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
                   value={formData.testingFacility}
                   onChange={(e) => handleChange('testingFacility', e.target.value)}
                   placeholder="Lab name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -357,22 +357,22 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
           {/* Record Results */}
           {activeTab === 'results' && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">Record testing results (purity and net weight)</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Record testing results (purity and net weight)</p>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Date Results Received *
                 </label>
                 <input
                   type="date"
                   value={formData.dateResultsReceived}
                   onChange={(e) => handleChange('dateResultsReceived', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Purity (%) *
                 </label>
                 <input
@@ -380,12 +380,12 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
                   value={formData.purity}
                   onChange={(e) => handleChange('purity', e.target.value)}
                   placeholder="e.g., 98.5%"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Net Weight *
                 </label>
                 <input
@@ -393,12 +393,12 @@ export default function OrderManagement({ peptide, onClose, onUpdate }) {
                   value={formData.netWeight}
                   onChange={(e) => handleChange('netWeight', e.target.value)}
                   placeholder="e.g., 245mg"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
+              <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
                   ✓ After recording results with purity and net weight, this peptide can be marked as ready for sale (pending labeling).
                 </p>
               </div>
