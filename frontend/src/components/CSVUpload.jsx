@@ -78,15 +78,17 @@ export default function CSVUpload({ onImportComplete }) {
         await db.peptides.bulkImport(parseResult.peptides);
         importedCount = parseResult.peptides.length;
       } else {
-        // Update mode: update existing or add new
+        // Update mode: only update quantity, preserve all other manually edited fields
         for (const peptide of parseResult.peptides) {
           const existing = await db.peptides.get(peptide.peptideId);
           if (existing) {
-            // Update existing peptide
-            await db.peptides.update(peptide.peptideId, peptide);
+            // Update ONLY quantity - preserve all manually edited fields
+            await db.peptides.update(peptide.peptideId, {
+              quantity: peptide.quantity
+            });
             updatedCount++;
           } else {
-            // Add new peptide
+            // Add new peptide with all CSV fields
             await db.peptides.set(peptide.peptideId, peptide);
             importedCount++;
           }
@@ -178,7 +180,7 @@ export default function CSVUpload({ onImportComplete }) {
             <div>
               <div className="font-medium text-gray-900 dark:text-white">Update Existing Inventory</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Update quantities for existing products, add new ones. No duplicates created.
+                Update ONLY quantities for existing products, add new ones. Preserves all manually edited fields (purity, batch #, labels, etc.).
               </div>
             </div>
           </label>
