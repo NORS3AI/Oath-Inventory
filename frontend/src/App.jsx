@@ -73,6 +73,12 @@ function App() {
               onClick={() => setActiveTab('dashboard')}
             />
             <NavButton
+              icon={<Upload className="w-5 h-5" />}
+              label="Import CSV"
+              active={activeTab === 'import'}
+              onClick={() => setActiveTab('import')}
+            />
+            <NavButton
               icon={<Package className="w-5 h-5" />}
               label="Inventory"
               active={activeTab === 'inventory'}
@@ -111,6 +117,7 @@ function App() {
         ) : (
           <>
             {activeTab === 'dashboard' && <DashboardView stats={stats} />}
+            {activeTab === 'import' && <CSVUpload onImportComplete={handleImportComplete} />}
             {activeTab === 'inventory' && (
               <InventoryView
                 peptides={peptides}
