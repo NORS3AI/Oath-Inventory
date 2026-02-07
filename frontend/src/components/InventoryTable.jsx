@@ -13,8 +13,8 @@ import RecordSaleModal from './RecordSaleModal';
 const DEFAULT_COLUMNS = [
   { id: 'peptideId', label: 'Product', field: 'peptideId', sortable: true },
   { id: 'peptideName', label: 'SKU', field: 'peptideName', sortable: true },
-  { id: 'labeledCount', label: 'Labeled', field: 'labeledCount', sortable: true },
   { id: 'quantity', label: 'Quantity', field: 'quantity', sortable: true },
+  { id: 'labeledCount', label: 'Labeled', field: 'labeledCount', sortable: true },
   { id: 'status', label: 'Status', field: 'status', sortable: true },
   { id: 'batchNumber', label: 'Batch #', field: 'batchNumber', sortable: true },
   { id: 'netWeight', label: 'Net Weight', field: 'netWeight', sortable: true },
