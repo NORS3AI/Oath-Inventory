@@ -259,7 +259,10 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
 
       // Color coding based on percentage labeled
       let colorClass = '';
-      if (percentage <= 25) {
+      if (quantity === 0) {
+        // No stock - show gray/neutral
+        colorClass = 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      } else if (percentage <= 25) {
         colorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'; // 0-25%
       } else if (percentage <= 50) {
         colorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'; // 26-50%
