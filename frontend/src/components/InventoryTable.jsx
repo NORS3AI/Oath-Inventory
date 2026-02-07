@@ -263,9 +263,9 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
 
   if (peptides.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
         <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600">No inventory data yet. Import a CSV to get started.</p>
+        <p className="text-gray-600 dark:text-gray-400">No inventory data yet. Import a CSV to get started.</p>
       </div>
     );
   }
@@ -273,17 +273,17 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   return (
     <div className="space-y-4">
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search peptides..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -292,7 +292,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Status ({peptides.length})</option>
               <option value="OUT_OF_STOCK">Out of Stock ({statusCounts.OUT_OF_STOCK})</option>
@@ -332,15 +332,15 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
       </div>
 
       {/* Results Count */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
         <span>Showing {sortedPeptides.length} of {peptides.length} peptides</span>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
                 {visibleColumns.map((column, index) => (
                   <th
@@ -350,8 +350,8 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
                     onDragEnd={handleDragEnd}
-                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
-                      ${column.sortable ? 'hover:bg-gray-100 cursor-pointer' : ''}
+                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider
+                      ${column.sortable ? 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer' : ''}
                       ${draggedColumn === index ? 'opacity-50' : ''}
                     `}
                     onClick={() => column.sortable && handleSort(column.field)}
@@ -361,10 +361,10 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
                       {column.sortable && (
                         <>
                           <ArrowUpDown
-                            className={`w-4 h-4 ${sortField === column.field ? 'text-blue-600' : 'text-gray-400'}`}
+                            className={`w-4 h-4 ${sortField === column.field ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}
                           />
                           {sortField === column.field && (
-                            <span className="text-xs text-blue-600">
+                            <span className="text-xs text-blue-600 dark:text-blue-400">
                               {sortDirection === 'asc' ? '↑' : '↓'}
                             </span>
                           )}
@@ -375,21 +375,21 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {sortedPeptides.map((peptide) => (
                 <tr
                   key={peptide.id}
                   onClick={() => setQuickEditPeptide(peptide)}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                 >
                   {visibleColumns.map((column) => (
                     <td
                       key={column.id}
                       className={`px-6 py-4 text-sm ${
-                        column.id === 'peptideId' ? 'font-medium text-gray-900' :
+                        column.id === 'peptideId' ? 'font-medium text-gray-900 dark:text-white' :
                         column.id === 'status' ? '' :
-                        column.id === 'notes' ? 'max-w-xs truncate text-gray-500' :
-                        'text-gray-500'
+                        column.id === 'notes' ? 'max-w-xs truncate text-gray-500 dark:text-gray-400' :
+                        'text-gray-500 dark:text-gray-400'
                       } ${column.id === 'notes' ? '' : 'whitespace-nowrap'}`}
                     >
                       {renderCell(peptide, column)}
