@@ -438,12 +438,11 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
       )}
 
       {/* Exclusions Manager Modal */}
-      {showExclusionsModal && (
-        <ExclusionManager
-          onClose={() => setShowExclusionsModal(false)}
-          onUpdate={onRefresh}
-        />
-      )}
+      <ExclusionManager
+        isOpen={showExclusionsModal}
+        onClose={() => setShowExclusionsModal(false)}
+        onUpdate={onRefresh}
+      />
     </div>
   );
 }

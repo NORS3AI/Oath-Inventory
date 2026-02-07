@@ -14,12 +14,16 @@ const DEFAULT_EXCLUSIONS = [
   'OATH-TESA-IPA-10-5'
 ];
 
-export default function ExclusionManager({ onUpdate }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function ExclusionManager({ onUpdate, isOpen: controlledIsOpen, onClose }) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [exclusions, setExclusions] = useState([]);
   const [newExclusion, setNewExclusion] = useState('');
   const [loading, setLoading] = useState(true);
   const modalRef = useRef(null);
+
+  // Use controlled isOpen if provided, otherwise use internal state
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const setIsOpen = onClose ? onClose : setInternalIsOpen;
 
   // Load exclusions from settings
   useEffect(() => {
@@ -73,7 +77,11 @@ export default function ExclusionManager({ onUpdate }) {
 
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
-        setIsOpen(false);
+        if (onClose) {
+          onClose();
+        } else {
+          setInternalIsOpen(false);
+        }
       }
     };
 
@@ -88,7 +96,7 @@ export default function ExclusionManager({ onUpdate }) {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   // Close on Escape key
   useEffect(() => {
@@ -96,24 +104,38 @@ export default function ExclusionManager({ onUpdate }) {
 
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
-        setIsOpen(false);
+        if (onClose) {
+          onClose();
+        } else {
+          setInternalIsOpen(false);
+        }
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen]);
+  }, [isOpen, onClose]);
+
+  const handleCloseModal = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      setInternalIsOpen(false);
+    }
+  };
 
   return (
     <>
-      {/* Trigger Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="inline-flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-      >
-        <Ban className="w-4 h-4" />
-        <span>Manage Exclusions</span>
-      </button>
+      {/* Trigger Button - only show if not controlled from parent */}
+      {controlledIsOpen === undefined && (
+        <button
+          onClick={() => setInternalIsOpen(true)}
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+        >
+          <Ban className="w-4 h-4" />
+          <span>Manage Exclusions</span>
+        </button>
+      )}
 
       {/* Modal */}
       {isOpen && (
@@ -129,7 +151,7 @@ export default function ExclusionManager({ onUpdate }) {
                 </div>
               </div>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X className="w-6 h-6" />
@@ -208,7 +230,7 @@ export default function ExclusionManager({ onUpdate }) {
                   Changes are saved automatically
                 </p>
                 <button
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 bg-gray-900 dark:bg-blue-600 text-white rounded-lg hover:bg-gray-800 dark:hover:bg-blue-700 transition-colors font-medium"
                 >
                   Done
