@@ -13,7 +13,7 @@ const DEFAULT_COLUMNS = [
   { id: 'peptideId', label: 'Product', field: 'peptideId', sortable: true },
   { id: 'peptideName', label: 'SKU', field: 'peptideName', sortable: true },
   { id: 'quantity', label: 'Quantity', field: 'quantity', sortable: true },
-  { id: 'isLabeled', label: 'Labeled', field: 'isLabeled', sortable: true },
+  { id: 'labeledCount', label: 'Labeled', field: 'labeledCount', sortable: true },
   { id: 'status', label: 'Status', field: 'status', sortable: true },
   { id: 'batchNumber', label: 'Batch #', field: 'batchNumber', sortable: true },
   { id: 'netWeight', label: 'Net Weight', field: 'netWeight', sortable: true },
@@ -127,10 +127,14 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         bVal = Number(bVal) || 0;
       }
 
-      // Handle boolean sorting (labeled column)
-      if (sortField === 'isLabeled') {
-        aVal = aVal ? 1 : 0;
-        bVal = bVal ? 1 : 0;
+      // Handle labeled count sorting (by percentage)
+      if (sortField === 'labeledCount') {
+        const aQty = Number(a.quantity) || 1;
+        const bQty = Number(b.quantity) || 1;
+        const aLabeled = Number(a.labeledCount) || (a.isLabeled ? aQty : 0);
+        const bLabeled = Number(b.labeledCount) || (b.isLabeled ? bQty : 0);
+        aVal = (aLabeled / aQty) * 100;
+        bVal = (bLabeled / bQty) * 100;
       }
 
       // Handle status sorting (by priority)
@@ -230,14 +234,28 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
       );
     }
 
-    if (column.id === 'isLabeled') {
+    if (column.id === 'labeledCount') {
+      const quantity = Number(peptide.quantity) || 0;
+      const labeledCount = Number(peptide.labeledCount) || (peptide.isLabeled ? quantity : 0);
+      const percentage = quantity > 0 ? Math.round((labeledCount / quantity) * 100) : 0;
+
+      // Color coding based on percentage labeled
+      let colorClass = '';
+      if (percentage === 0) {
+        colorClass = 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'; // Not started
+      } else if (percentage <= 40) {
+        colorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'; // 0-40%
+      } else if (percentage <= 80) {
+        colorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'; // 41-80%
+      } else if (percentage < 100) {
+        colorClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'; // 81-99%
+      } else {
+        colorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'; // 100%
+      }
+
       return (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          peptide.isLabeled
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-        }`}>
-          {peptide.isLabeled ? 'Yes' : 'No'}
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
+          {labeledCount} / {quantity} ({percentage}%)
         </span>
       );
     }
