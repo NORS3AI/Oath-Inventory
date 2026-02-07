@@ -1,11 +1,13 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Tags, Plus, Minus, CheckCircle, AlertCircle, TrendingUp, Package } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Tags, Plus, Minus, CheckCircle, AlertCircle, TrendingUp, Package, ChevronUp, ChevronDown } from 'lucide-react';
 import { db } from '../lib/db';
 import { useToast } from './Toast';
 
 export default function LabelManagement({ peptides, onRefresh }) {
   const [labelInventory, setLabelInventory] = useState(0);
   const [adjustAmount, setAdjustAmount] = useState('');
+  const [localPeptides, setLocalPeptides] = useState(peptides);
+  const priorityQueueRef = useRef(null);
   const { success, error: showError } = useToast();
 
   // Load label inventory
@@ -17,10 +19,15 @@ export default function LabelManagement({ peptides, onRefresh }) {
     loadLabelInventory();
   }, []);
 
+  // Sync local peptides with prop changes
+  useEffect(() => {
+    setLocalPeptides(peptides);
+  }, [peptides]);
+
   // Calculate priority queue
   const priorityQueue = useMemo(() => {
     // Filter: only peptides with inventory > 0 and not fully labeled
-    const unlabeled = peptides.filter(p => {
+    const unlabeled = localPeptides.filter(p => {
       const quantity = Number(p.quantity) || 0;
       const labeledCount = Number(p.labeledCount) || (p.isLabeled ? quantity : 0);
       return quantity > 0 && labeledCount < quantity;
@@ -54,15 +61,15 @@ export default function LabelManagement({ peptides, onRefresh }) {
 
     // Sort by priority score (highest first)
     return withPriority.sort((a, b) => b.priorityScore - a.priorityScore);
-  }, [peptides]);
+  }, [localPeptides]);
 
   const labeledPeptides = useMemo(() => {
-    return peptides.filter(p => {
+    return localPeptides.filter(p => {
       const quantity = Number(p.quantity) || 0;
       const labeledCount = Number(p.labeledCount) || (p.isLabeled ? quantity : 0);
       return quantity > 0 && labeledCount >= quantity;
     });
-  }, [peptides]);
+  }, [localPeptides]);
 
   const stats = {
     totalUnlabeled: priorityQueue.length,
@@ -123,7 +130,7 @@ export default function LabelManagement({ peptides, onRefresh }) {
       const currentLabeled = Number(peptide.labeledCount) || 0;
       const newLabeledCount = Math.min(currentLabeled + 1, quantity);
 
-      // Update labeled count
+      // Update labeled count in database
       await db.peptides.update(peptide.peptideId, {
         labeledCount: newLabeledCount,
         isLabeled: newLabeledCount >= quantity,
@@ -134,8 +141,14 @@ export default function LabelManagement({ peptides, onRefresh }) {
       await db.labels.setInventory(labelInventory - 1);
       setLabelInventory(labelInventory - 1);
 
+      // Update local state without refreshing entire page
+      setLocalPeptides(prev => prev.map(p =>
+        p.peptideId === peptide.peptideId
+          ? { ...p, labeledCount: newLabeledCount, isLabeled: newLabeledCount >= quantity, dateLabeled: new Date().toISOString() }
+          : p
+      ));
+
       success(`${peptide.peptideId} labeled (${newLabeledCount}/${quantity})`);
-      if (onRefresh) onRefresh();
     } catch (err) {
       showError('Failed to mark peptide as labeled');
     }
@@ -147,7 +160,7 @@ export default function LabelManagement({ peptides, onRefresh }) {
       const currentLabeled = Number(peptide.labeledCount) || 0;
       const newLabeledCount = Math.max(currentLabeled - 1, 0);
 
-      // Update labeled count
+      // Update labeled count in database
       await db.peptides.update(peptide.peptideId, {
         labeledCount: newLabeledCount,
         isLabeled: newLabeledCount >= quantity,
@@ -158,11 +171,31 @@ export default function LabelManagement({ peptides, onRefresh }) {
       await db.labels.setInventory(labelInventory + 1);
       setLabelInventory(labelInventory + 1);
 
+      // Update local state without refreshing entire page
+      setLocalPeptides(prev => prev.map(p =>
+        p.peptideId === peptide.peptideId
+          ? { ...p, labeledCount: newLabeledCount, isLabeled: newLabeledCount >= quantity, dateLabeled: newLabeledCount > 0 ? new Date().toISOString() : null }
+          : p
+      ));
+
       success(`Label removed from ${peptide.peptideId} (${newLabeledCount}/${quantity})`);
-      if (onRefresh) onRefresh();
     } catch (err) {
       showError('Failed to remove label');
     }
+  };
+
+  // Scroll functions
+  const scrollByItems = (direction) => {
+    if (!priorityQueueRef.current) return;
+
+    // Calculate approximate height of 10 rows (including header and padding)
+    // Assuming ~60px per row (48px row + borders/padding)
+    const scrollAmount = 600;
+
+    priorityQueueRef.current.scrollBy({
+      top: direction === 'down' ? scrollAmount : -scrollAmount,
+      behavior: 'smooth'
+    });
   };
 
   return (
@@ -241,7 +274,7 @@ export default function LabelManagement({ peptides, onRefresh }) {
       </div>
 
       {/* Labeling Priority Queue */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors relative">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
@@ -269,8 +302,9 @@ export default function LabelManagement({ peptides, onRefresh }) {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <>
+            <div ref={priorityQueueRef} className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
@@ -339,7 +373,28 @@ export default function LabelManagement({ peptides, onRefresh }) {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+
+            {/* Scroll Controls */}
+            {priorityQueue.length > 10 && (
+              <div className="fixed right-8 bottom-24 flex flex-col gap-2 z-10">
+                <button
+                  onClick={() => scrollByItems('up')}
+                  className="p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg transition-colors"
+                  title="Scroll up 10 items"
+                >
+                  <ChevronUp className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={() => scrollByItems('down')}
+                  className="p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg transition-colors"
+                  title="Scroll down 10 items"
+                >
+                  <ChevronDown className="w-6 h-6" />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
