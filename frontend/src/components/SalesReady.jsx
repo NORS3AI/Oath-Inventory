@@ -28,9 +28,9 @@ export default function SalesReady({ peptides }) {
 
   if (peptides.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
         <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600">No inventory data yet. Import a CSV to get started.</p>
+        <p className="text-gray-600 dark:text-gray-400">No inventory data yet. Import a CSV to get started.</p>
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function SalesReady({ peptides }) {
       )}
 
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
@@ -115,7 +115,7 @@ export default function SalesReady({ peptides }) {
               placeholder="Search peptides..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -124,7 +124,7 @@ export default function SalesReady({ peptides }) {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">All Items ({stats.total})</option>
               <option value="READY">Sales Ready ({stats.ready})</option>
@@ -135,47 +135,47 @@ export default function SalesReady({ peptides }) {
       </div>
 
       {/* Results */}
-      <div className="text-sm text-gray-600 mb-2">
+      <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
         Showing {filteredPeptides.length} of {peptides.length} items
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Product
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   SKU
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Batch #
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Purity
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Net Weight
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Label
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Missing
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredPeptides.map((peptide) => {
                 const readiness = checkSalesReadiness(peptide);
                 return (
-                  <tr key={peptide.id} className="hover:bg-gray-50">
+                  <tr key={peptide.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     {/* Status */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       {readiness.isReady ? (
@@ -192,17 +192,17 @@ export default function SalesReady({ peptides }) {
                     </td>
 
                     {/* Product */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {peptide.peptideId}
                     </td>
 
                     {/* SKU */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {peptide.peptideName || '-'}
                     </td>
 
                     {/* Batch # */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {peptide.batchNumber || '-'}
                     </td>
 
@@ -234,11 +234,11 @@ export default function SalesReady({ peptides }) {
                     </td>
 
                     {/* Missing Requirements */}
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                       {readiness.missing.length > 0 ? (
-                        <span className="text-red-600">{readiness.missing.join(', ')}</span>
+                        <span className="text-red-600 dark:text-red-400">{readiness.missing.join(', ')}</span>
                       ) : (
-                        <span className="text-green-600">None</span>
+                        <span className="text-green-600 dark:text-green-400">None</span>
                       )}
                     </td>
                   </tr>
@@ -250,7 +250,7 @@ export default function SalesReady({ peptides }) {
 
         {filteredPeptides.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No items match your search criteria</p>
+            <p className="text-gray-500 dark:text-gray-400">No items match your search criteria</p>
           </div>
         )}
       </div>

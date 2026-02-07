@@ -170,8 +170,8 @@ function DashboardView({ stats }) {
       </div>
 
       {/* Status Legend */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Stock Status Legend</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Stock Status Legend</h3>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <StatusCard
             color="red"
@@ -243,8 +243,8 @@ function DashboardView({ stats }) {
           </ol>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Action Items</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Action Items</h3>
           <div className="space-y-3">
             {stats.needsOrdering > 0 && (
               <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
@@ -357,12 +357,12 @@ function StatusCard({ color, label, action, count }) {
 
 function StatCard({ title, value, subtitle, icon }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-          <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{value}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>
         </div>
         <div>{icon}</div>
       </div>

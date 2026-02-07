@@ -147,8 +147,8 @@ export default function CSVUpload({ onImportComplete }) {
   return (
     <div className="space-y-6">
       {/* Import Mode Selection */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Import Mode</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Import Mode</h3>
         <div className="space-y-3">
           <label className="flex items-start space-x-3 cursor-pointer">
             <input
@@ -160,8 +160,8 @@ export default function CSVUpload({ onImportComplete }) {
               className="mt-1"
             />
             <div>
-              <div className="font-medium text-gray-900">Replace All Inventory</div>
-              <div className="text-sm text-gray-600">
+              <div className="font-medium text-gray-900 dark:text-white">Replace All Inventory</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
                 Clear existing data and import fresh. Use this for full inventory updates.
               </div>
             </div>
@@ -176,8 +176,8 @@ export default function CSVUpload({ onImportComplete }) {
               className="mt-1"
             />
             <div>
-              <div className="font-medium text-gray-900">Update Existing Inventory</div>
-              <div className="text-sm text-gray-600">
+              <div className="font-medium text-gray-900 dark:text-white">Update Existing Inventory</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
                 Update quantities for existing products, add new ones. No duplicates created.
               </div>
             </div>
@@ -189,8 +189,8 @@ export default function CSVUpload({ onImportComplete }) {
       <div
         className={`
           relative border-2 border-dashed rounded-lg p-8 text-center transition-colors
-          ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white'}
-          ${importing ? 'opacity-50 pointer-events-none' : 'hover:border-gray-400'}
+          ${dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'}
+          ${importing ? 'opacity-50 pointer-events-none' : 'hover:border-gray-400 dark:hover:border-gray-500'}
         `}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -206,13 +206,13 @@ export default function CSVUpload({ onImportComplete }) {
           disabled={importing}
         />
 
-        <Upload className={`w-16 h-16 mx-auto mb-4 ${dragActive ? 'text-blue-600' : 'text-gray-400'}`} />
+        <Upload className={`w-16 h-16 mx-auto mb-4 ${dragActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
 
         <div className="space-y-2">
-          <p className="text-lg font-medium text-gray-900">
+          <p className="text-lg font-medium text-gray-900 dark:text-white">
             {importing ? 'Importing...' : 'Drop your CSV file here'}
           </p>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             or{' '}
             <label
               htmlFor="csv-upload"
@@ -234,7 +234,7 @@ export default function CSVUpload({ onImportComplete }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <button
           onClick={handleDownloadSample}
-          className="inline-flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <FileText className="w-4 h-4" />
           <span>Download Sample CSV</span>
@@ -252,14 +252,14 @@ export default function CSVUpload({ onImportComplete }) {
       {/* Clear Confirmation Dialog */}
       {showClearConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md mx-4">
             <div className="flex items-start space-x-4">
               <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   Clear All Inventory Data?
                 </h3>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   This will permanently delete all peptides from your inventory. This action cannot be undone.
                 </p>
                 <div className="flex gap-3">

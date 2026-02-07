@@ -67,17 +67,17 @@ export default function ColumnReorderModal({ columns, hiddenColumns = [], onReor
       {/* Modal */}
       <div
         ref={modalRef}
-        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col z-[1000]"
+        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col z-[1000]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Manage Columns</h3>
-            <p className="text-sm text-gray-600">Reorder and show/hide columns</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Manage Columns</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Reorder and show/hide columns</p>
           </div>
           <button
             onClick={onClose}
-            className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-colors"
+            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900 rounded-full p-1 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -93,8 +93,8 @@ export default function ColumnReorderModal({ columns, hiddenColumns = [], onReor
                   key={column.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                     isHidden
-                      ? 'bg-gray-100 border-gray-300 opacity-60'
-                      : 'bg-gray-50 border-gray-200'
+                      ? 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 opacity-60'
+                      : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700'
                   }`}
                 >
                   {/* Visibility Checkbox */}
@@ -103,22 +103,22 @@ export default function ColumnReorderModal({ columns, hiddenColumns = [], onReor
                       type="checkbox"
                       checked={!isHidden}
                       onChange={() => toggleVisibility(column.id)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                     />
                   </label>
 
                   {/* Order Number */}
                   <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                     isHidden
-                      ? 'bg-gray-300 text-gray-500'
-                      : 'bg-blue-100 text-blue-700'
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
+                      : 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
                   }`}>
                     {index + 1}
                   </div>
 
                   {/* Column Label */}
                   <div className={`flex-1 font-medium ${
-                    isHidden ? 'text-gray-500 line-through' : 'text-gray-900'
+                    isHidden ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-900 dark:text-white'
                   }`}>
                     {column.label}
                   </div>
@@ -135,8 +135,8 @@ export default function ColumnReorderModal({ columns, hiddenColumns = [], onReor
                       disabled={index === 0}
                       className={`p-1.5 rounded transition-colors ${
                         index === 0
-                          ? 'text-gray-300 cursor-not-allowed'
-                          : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                          ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                          : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900'
                       }`}
                       aria-label="Move up"
                     >
@@ -147,8 +147,8 @@ export default function ColumnReorderModal({ columns, hiddenColumns = [], onReor
                       disabled={index === columnList.length - 1}
                       className={`p-1.5 rounded transition-colors ${
                         index === columnList.length - 1
-                          ? 'text-gray-300 cursor-not-allowed'
-                          : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                          ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                          : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900'
                       }`}
                       aria-label="Move down"
                     >
@@ -162,10 +162,10 @@ export default function ColumnReorderModal({ columns, hiddenColumns = [], onReor
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 p-4 bg-gray-50 border-t border-gray-200">
+        <div className="flex items-center justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
           >
             Cancel
           </button>
