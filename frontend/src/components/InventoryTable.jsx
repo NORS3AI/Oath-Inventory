@@ -40,6 +40,22 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showExclusionsModal, setShowExclusionsModal] = useState(false);
 
+  // Wrapper function to preserve scroll position during refresh
+  const handleRefreshWithScrollPreservation = () => {
+    // Save current scroll position
+    const scrollY = window.scrollY;
+
+    // Call the refresh function
+    if (onRefresh) {
+      onRefresh();
+    }
+
+    // Restore scroll position after a short delay to allow re-render
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollY);
+    });
+  };
+
   // Load column order and hidden columns from settings
   useEffect(() => {
     const loadColumnSettings = async () => {
@@ -443,7 +459,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         <OrderManagement
           peptide={selectedPeptide}
           onClose={() => setSelectedPeptide(null)}
-          onUpdate={onRefresh}
+          onUpdate={handleRefreshWithScrollPreservation}
         />
       )}
 
@@ -452,7 +468,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         <QuickEditModal
           peptide={quickEditPeptide}
           onClose={() => setQuickEditPeptide(null)}
-          onUpdate={onRefresh}
+          onUpdate={handleRefreshWithScrollPreservation}
         />
       )}
 
@@ -471,7 +487,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
       <ExclusionManager
         isOpen={showExclusionsModal}
         onClose={() => setShowExclusionsModal(false)}
-        onUpdate={onRefresh}
+        onUpdate={handleRefreshWithScrollPreservation}
       />
 
       {/* Record Sale Modal */}
@@ -479,7 +495,7 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
         <RecordSaleModal
           peptide={recordSalePeptide}
           onClose={() => setRecordSalePeptide(null)}
-          onComplete={onRefresh}
+          onComplete={handleRefreshWithScrollPreservation}
         />
       )}
     </div>
