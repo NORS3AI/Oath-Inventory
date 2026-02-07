@@ -243,16 +243,14 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
 
       // Color coding based on percentage labeled
       let colorClass = '';
-      if (percentage === 0) {
-        colorClass = 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'; // Not started
-      } else if (percentage <= 40) {
-        colorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'; // 0-40%
-      } else if (percentage <= 80) {
-        colorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'; // 41-80%
-      } else if (percentage < 100) {
-        colorClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'; // 81-99%
+      if (percentage <= 25) {
+        colorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'; // 0-25%
+      } else if (percentage <= 50) {
+        colorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'; // 26-50%
+      } else if (percentage <= 75) {
+        colorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'; // 51-75%
       } else {
-        colorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'; // 100%
+        colorClass = 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200'; // 76-100%
       }
 
       return (
