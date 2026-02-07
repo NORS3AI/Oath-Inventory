@@ -77,6 +77,13 @@ export default function CSVUpload({ onImportComplete }) {
         // Import all new data
         await db.peptides.bulkImport(parseResult.peptides);
         importedCount = parseResult.peptides.length;
+
+        // Track velocity for all imported peptides
+        for (const peptide of parseResult.peptides) {
+          if (peptide.velocity) {
+            await db.velocityHistory.add(peptide.peptideId, peptide.velocity);
+          }
+        }
       } else {
         // Update mode: only update quantity, preserve all other manually edited fields
         for (const peptide of parseResult.peptides) {
@@ -87,10 +94,20 @@ export default function CSVUpload({ onImportComplete }) {
               quantity: peptide.quantity
             });
             updatedCount++;
+
+            // Track velocity history (only if changed)
+            if (peptide.velocity) {
+              await db.velocityHistory.add(peptide.peptideId, peptide.velocity);
+            }
           } else {
             // Add new peptide with all CSV fields
             await db.peptides.set(peptide.peptideId, peptide);
             importedCount++;
+
+            // Track velocity for new peptides
+            if (peptide.velocity) {
+              await db.velocityHistory.add(peptide.peptideId, peptide.velocity);
+            }
           }
         }
       }
