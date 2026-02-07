@@ -219,30 +219,30 @@ function DashboardView({ stats }) {
           title="Total Peptides"
           value={stats.total.toString()}
           subtitle="In system"
-          icon={<Package className="w-8 h-8 text-blue-600" />}
+          icon={<Package className="w-8 h-8 text-blue-600 dark:text-blue-400" />}
         />
         <StatCard
           title="Need Ordering"
           value={stats.needsOrdering.toString()}
           subtitle="Requires attention"
-          icon={<Package className="w-8 h-8 text-orange-600" />}
+          icon={<Package className="w-8 h-8 text-orange-600 dark:text-orange-400" />}
         />
         <StatCard
           title="Need Labeling"
           value="0"
           subtitle="Awaiting labels"
-          icon={<Tags className="w-8 h-8 text-purple-600" />}
+          icon={<Tags className="w-8 h-8 text-purple-600 dark:text-purple-400" />}
         />
       </div>
 
       {/* Getting Started or Actions */}
       {stats.total === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Getting Started</h3>
-          <p className="text-blue-800 mb-4">
+        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-200 mb-2">Getting Started</h3>
+          <p className="text-blue-800 dark:text-blue-300 mb-4">
             Welcome to the Oath Research Peptide Inventory System! To get started:
           </p>
-          <ol className="list-decimal list-inside space-y-2 text-blue-800">
+          <ol className="list-decimal list-inside space-y-2 text-blue-800 dark:text-blue-300">
             <li>Import your inventory CSV file using the "Import CSV" tab</li>
             <li>Review your inventory in the "Inventory" tab</li>
             <li>Track peptides that need labeling in the "Labeling" tab</li>
@@ -254,21 +254,21 @@ function DashboardView({ stats }) {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Action Items</h3>
           <div className="space-y-3">
             {stats.needsOrdering > 0 && (
-              <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <span className="text-orange-900 font-medium">
+              <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg">
+                <span className="text-orange-900 dark:text-orange-200 font-medium">
                   {stats.needsOrdering} peptide{stats.needsOrdering !== 1 ? 's' : ''} need ordering
                 </span>
-                <button className="text-orange-600 hover:text-orange-800 font-medium">
+                <button className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 font-medium">
                   View →
                 </button>
               </div>
             )}
             {stats.needsOrdering === 0 && stats.total > 0 && (
-              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                <span className="text-green-900 font-medium">
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <span className="text-green-900 dark:text-green-200 font-medium">
                   All peptides have adequate stock levels
                 </span>
-                <CheckCircle className="w-5 h-5 text-green-600" />
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
             )}
           </div>
@@ -346,11 +346,11 @@ function ReportsView({ peptides, orders, thresholds }) {
 
 function StatusCard({ color, label, action, count }) {
   const colors = {
-    red: 'bg-red-100 text-red-800 border-red-200',
-    orange: 'bg-orange-100 text-orange-800 border-orange-200',
-    yellow: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    green: 'bg-green-100 text-green-800 border-green-200',
-    teal: 'bg-teal-100 text-teal-800 border-teal-200'
+    red: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800',
+    orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-800',
+    yellow: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800',
+    green: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800',
+    teal: 'bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200 border-teal-200 dark:border-teal-800'
   };
 
   return (
