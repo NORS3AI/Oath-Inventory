@@ -40,7 +40,7 @@ function App() {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors overflow-x-hidden">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -71,9 +71,9 @@ function App() {
       </header>
 
       {/* Navigation */}
-      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors">
+      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors overflow-x-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
+          <div className="flex space-x-4 sm:space-x-8 min-w-max">
             <NavButton
               icon={<BarChart3 className="w-5 h-5" />}
               label="Dashboard"
@@ -158,7 +158,7 @@ function NavButton({ icon, label, active, onClick, badge }) {
     <button
       onClick={onClick}
       className={`
-        flex items-center space-x-2 px-3 py-4 border-b-2 font-medium text-sm transition-colors relative
+        flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-4 border-b-2 font-medium text-xs sm:text-sm transition-colors relative whitespace-nowrap
         ${active
           ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
           : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
