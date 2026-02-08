@@ -2,23 +2,68 @@ import { useState, useEffect, useCallback } from 'react';
 import { db } from '../lib/db';
 import { calculateStockStatus, getDefaultThresholds } from '../utils/stockStatus';
 
+// Default exclusions
+const DEFAULT_EXCLUSIONS = [
+  'OATH-A1-TEST',
+  'a1 test',
+  'OATH-GH-FRAGMENT-176-191-5MG',
+  'OATH-GIFT-CARD',
+  'gift card',
+  'OATH-NAD+-1000MG',
+  'OATH-SS-31-10MG',
+  'OATH-TESA-IPA-10-5'
+];
+
+// Helper function to check if a peptide should be excluded
+function isExcluded(peptide, exclusions) {
+  if (!exclusions || exclusions.length === 0) return false;
+
+  const peptideId = (peptide.peptideId || '').toLowerCase();
+  const peptideName = (peptide.peptideName || '').toLowerCase();
+
+  return exclusions.some(exclusion => {
+    const exc = exclusion.toLowerCase();
+    return peptideId.includes(exc) || peptideName.includes(exc) ||
+           exc.includes(peptideId) || exc.includes(peptideName);
+  });
+}
+
 export function useInventory() {
+  const [allPeptides, setAllPeptides] = useState([]);
   const [peptides, setPeptides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [thresholds, setThresholds] = useState(getDefaultThresholds());
+  const [exclusions, setExclusions] = useState(DEFAULT_EXCLUSIONS);
+
+  // Load exclusions from settings
+  const loadExclusions = useCallback(async () => {
+    try {
+      const saved = await db.settings.get('excludedProducts');
+      setExclusions(saved || DEFAULT_EXCLUSIONS);
+      return saved || DEFAULT_EXCLUSIONS;
+    } catch (error) {
+      console.error('Failed to load exclusions:', error);
+      return DEFAULT_EXCLUSIONS;
+    }
+  }, []);
 
   // Load peptides from database
   const loadPeptides = useCallback(async () => {
     try {
       setLoading(true);
       const loadedPeptides = await db.peptides.getAll();
-      setPeptides(loadedPeptides);
+      setAllPeptides(loadedPeptides);
+
+      // Load exclusions and filter
+      const currentExclusions = await loadExclusions();
+      const filtered = loadedPeptides.filter(p => !isExcluded(p, currentExclusions));
+      setPeptides(filtered);
     } catch (error) {
       console.error('Failed to load peptides:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadExclusions]);
 
   // Load thresholds from settings
   const loadThresholds = useCallback(async () => {
@@ -125,16 +170,38 @@ export function useInventory() {
     }
   }, []);
 
+  // Bulk exclude products
+  const bulkExclude = useCallback(async (peptideIds) => {
+    try {
+      // Add peptide IDs to exclusion list
+      const newExclusions = [...new Set([...exclusions, ...peptideIds])];
+      await db.settings.set('excludedProducts', newExclusions);
+      setExclusions(newExclusions);
+
+      // Re-filter peptides
+      const filtered = allPeptides.filter(p => !isExcluded(p, newExclusions));
+      setPeptides(filtered);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to bulk exclude:', error);
+      return { success: false, error: error.message };
+    }
+  }, [exclusions, allPeptides]);
+
   return {
     peptides,
+    allPeptides, // Include all peptides (unfiltered) for exclusion UI
     loading,
     thresholds,
+    exclusions,
     stats: stats(),
     refresh: loadPeptides,
     savePeptide,
     deletePeptide,
     updateQuantity,
     clearAll,
-    updateThresholds
+    updateThresholds,
+    bulkExclude
   };
 }

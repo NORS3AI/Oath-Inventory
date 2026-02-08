@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban, TrendingDown } from 'lucide-react';
+import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban, TrendingDown, Save, X } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
@@ -8,6 +8,7 @@ import QuickEditModal from './QuickEditModal';
 import ColumnReorderModal from './ColumnReorderModal';
 import ExclusionManager from './ExclusionManager';
 import RecordSaleModal from './RecordSaleModal';
+import { useToast } from './Toast';
 
 // Define all available columns
 const DEFAULT_COLUMNS = [
@@ -26,7 +27,7 @@ const DEFAULT_COLUMNS = [
   { id: 'actions', label: 'Actions', field: 'actions', sortable: false }
 ];
 
-export default function InventoryTable({ peptides, onRefresh, thresholds }) {
+export default function InventoryTable({ peptides, allPeptides, onRefresh, thresholds, bulkExclude }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('peptideId');
   const [sortDirection, setSortDirection] = useState('asc');
@@ -39,6 +40,11 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
   const [recordSalePeptide, setRecordSalePeptide] = useState(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showExclusionsModal, setShowExclusionsModal] = useState(false);
+
+  // Bulk exclusion state
+  const [excludeMode, setExcludeMode] = useState(false);
+  const [selectedForExclusion, setSelectedForExclusion] = useState(new Set());
+  const { success, error: showError } = useToast();
 
   // Wrapper function to preserve scroll position during refresh
   const handleRefreshWithScrollPreservation = () => {
@@ -197,6 +203,56 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
     downloadCSV(csvContent, `oath-inventory-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  // Toggle exclude mode
+  const handleToggleExcludeMode = () => {
+    if (excludeMode) {
+      // Exiting exclude mode - clear selections
+      setSelectedForExclusion(new Set());
+    }
+    setExcludeMode(!excludeMode);
+  };
+
+  // Toggle selection for a peptide
+  const handleToggleSelection = (peptideId) => {
+    const newSelection = new Set(selectedForExclusion);
+    if (newSelection.has(peptideId)) {
+      newSelection.delete(peptideId);
+    } else {
+      newSelection.add(peptideId);
+    }
+    setSelectedForExclusion(newSelection);
+  };
+
+  // Select all visible peptides
+  const handleSelectAll = () => {
+    if (selectedForExclusion.size === sortedPeptides.length) {
+      // Deselect all
+      setSelectedForExclusion(new Set());
+    } else {
+      // Select all visible
+      const allIds = new Set(sortedPeptides.map(p => p.peptideId));
+      setSelectedForExclusion(allIds);
+    }
+  };
+
+  // Save exclusions
+  const handleSaveExclusions = async () => {
+    if (selectedForExclusion.size === 0) {
+      showError('No items selected for exclusion');
+      return;
+    }
+
+    const result = await bulkExclude(Array.from(selectedForExclusion));
+    if (result.success) {
+      success(`Excluded ${selectedForExclusion.size} item(s)`);
+      setSelectedForExclusion(new Set());
+      setExcludeMode(false);
+      onRefresh();
+    } else {
+      showError('Failed to save exclusions');
+    }
+  };
+
   // Drag and drop handlers
   const handleDragStart = (e, columnIndex) => {
     setDraggedColumn(columnIndex);
@@ -341,60 +397,106 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
     <div className="space-y-4">
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search peptides..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+        <div className="flex flex-col gap-4">
+          {/* Main Controls Row */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            {!excludeMode && (
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search peptides..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            )}
+
+            {/* Exclude Mode Info */}
+            {excludeMode && (
+              <div className="flex-1 flex items-center gap-3 px-4 py-2 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg">
+                <Ban className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                <span className="text-sm font-medium text-orange-900 dark:text-orange-200">
+                  Exclude Mode: {selectedForExclusion.size} item(s) selected
+                </span>
+              </div>
+            )}
+
+            {/* Status Filter */}
+            {!excludeMode && (
+              <div className="sm:w-48">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Status ({peptides.length})</option>
+                  <option value="OUT_OF_STOCK">Out of Stock ({statusCounts.OUT_OF_STOCK})</option>
+                  <option value="NEARLY_OUT">Nearly Out ({statusCounts.NEARLY_OUT})</option>
+                  <option value="LOW_STOCK">Low Stock ({statusCounts.LOW_STOCK})</option>
+                  <option value="GOOD_STOCK">Good Stock ({statusCounts.GOOD_STOCK})</option>
+                </select>
+              </div>
+            )}
+
+            {/* Exclude Mode Actions */}
+            {excludeMode ? (
+              <>
+                <button
+                  onClick={handleSelectAll}
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <span>{selectedForExclusion.size === sortedPeptides.length ? 'Deselect All' : 'Select All'}</span>
+                </button>
+                <button
+                  onClick={handleSaveExclusions}
+                  disabled={selectedForExclusion.size === 0}
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Exclusions</span>
+                </button>
+                <button
+                  onClick={handleToggleExcludeMode}
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Cancel</span>
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Exclude Button */}
+                <button
+                  onClick={handleToggleExcludeMode}
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  <Ban className="w-4 h-4" />
+                  <span className="hidden sm:inline">Exclude</span>
+                </button>
+
+                {/* Reorder Columns Button */}
+                <button
+                  onClick={() => setShowReorderModal(true)}
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <List className="w-4 h-4" />
+                  <span className="hidden sm:inline">Reorder</span>
+                </button>
+
+                {/* Export Button */}
+                <button
+                  onClick={handleExport}
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+              </>
+            )}
           </div>
-
-          {/* Status Filter */}
-          <div className="sm:w-48">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Status ({peptides.length})</option>
-              <option value="OUT_OF_STOCK">Out of Stock ({statusCounts.OUT_OF_STOCK})</option>
-              <option value="NEARLY_OUT">Nearly Out ({statusCounts.NEARLY_OUT})</option>
-              <option value="LOW_STOCK">Low Stock ({statusCounts.LOW_STOCK})</option>
-              <option value="GOOD_STOCK">Good Stock ({statusCounts.GOOD_STOCK})</option>
-            </select>
-          </div>
-
-          {/* Exclusions Button */}
-          <button
-            onClick={() => setShowExclusionsModal(true)}
-            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-          >
-            <Ban className="w-4 h-4" />
-            <span className="hidden sm:inline">Exclusions</span>
-          </button>
-
-          {/* Reorder Columns Button */}
-          <button
-            onClick={() => setShowReorderModal(true)}
-            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            <List className="w-4 h-4" />
-            <span className="hidden sm:inline">Reorder</span>
-          </button>
-
-          {/* Export Button */}
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
         </div>
       </div>
 
@@ -409,23 +511,34 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
+                {/* Checkbox column when in exclude mode */}
+                {excludeMode && (
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedForExclusion.size === sortedPeptides.length && sortedPeptides.length > 0}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 dark:focus:ring-orange-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                  </th>
+                )}
                 {visibleColumns.map((column, index) => (
                   <th
                     key={column.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragEnd={handleDragEnd}
+                    draggable={!excludeMode}
+                    onDragStart={(e) => !excludeMode && handleDragStart(e, index)}
+                    onDragOver={!excludeMode ? handleDragOver : undefined}
+                    onDrop={(e) => !excludeMode && handleDrop(e, index)}
+                    onDragEnd={!excludeMode ? handleDragEnd : undefined}
                     className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider
-                      ${column.sortable ? 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer' : ''}
+                      ${column.sortable && !excludeMode ? 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer' : ''}
                       ${draggedColumn === index ? 'opacity-50' : ''}
                     `}
-                    onClick={() => column.sortable && handleSort(column.field)}
+                    onClick={() => !excludeMode && column.sortable && handleSort(column.field)}
                   >
                     <div className="flex items-center space-x-2">
                       <span>{column.label}</span>
-                      {column.sortable && (
+                      {column.sortable && !excludeMode && (
                         <>
                           <ArrowUpDown
                             className={`w-4 h-4 ${sortField === column.field ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}
@@ -446,9 +559,23 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
               {sortedPeptides.map((peptide) => (
                 <tr
                   key={peptide.id}
-                  onClick={() => setQuickEditPeptide(peptide)}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                  onClick={() => !excludeMode && setQuickEditPeptide(peptide)}
+                  className={`${excludeMode ? 'hover:bg-orange-50 dark:hover:bg-orange-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700'} ${excludeMode ? '' : 'cursor-pointer'}`}
                 >
+                  {/* Checkbox column when in exclude mode */}
+                  {excludeMode && (
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedForExclusion.has(peptide.peptideId)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelection(peptide.peptideId);
+                        }}
+                        className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 dark:focus:ring-orange-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                      />
+                    </td>
+                  )}
                   {visibleColumns.map((column) => (
                     <td
                       key={column.id}
