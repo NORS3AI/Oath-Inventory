@@ -254,7 +254,25 @@ export default function InventoryTable({ peptides, onRefresh, thresholds }) {
 
     if (column.id === 'labeledCount') {
       const quantity = Number(peptide.quantity) || 0;
-      const labeledCount = Number(peptide.labeledCount) || (peptide.isLabeled ? quantity : 0);
+
+      // Parse labeledCount, handling various data types
+      let labeledCount = 0;
+      if (typeof peptide.labeledCount === 'number') {
+        labeledCount = peptide.labeledCount;
+      } else if (typeof peptide.labeledCount === 'string') {
+        // Handle string numbers
+        const parsed = Number(peptide.labeledCount);
+        if (!isNaN(parsed)) {
+          labeledCount = parsed;
+        } else {
+          // If it's a non-numeric string (like "yes"/"no"), treat as 0
+          labeledCount = 0;
+        }
+      } else if (peptide.isLabeled) {
+        // Fallback to isLabeled boolean
+        labeledCount = quantity;
+      }
+
       const percentage = quantity > 0 ? Math.round((labeledCount / quantity) * 100) : 0;
 
       // Color coding based on percentage labeled
