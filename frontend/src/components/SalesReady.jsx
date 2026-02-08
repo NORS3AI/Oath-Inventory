@@ -18,13 +18,31 @@ const DEFAULT_COLUMNS = [
 
 export default function SalesReady({ peptides }) {
   const [filter, setFilter] = useState('ALL'); // 'ALL', 'READY', 'BLOCKED'
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    // Restore search term from localStorage
+    return localStorage.getItem('sales-searchTerm') || '';
+  });
   const [sortField, setSortField] = useState('peptideId');
   const [sortDirection, setSortDirection] = useState('asc');
   const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
   const [hiddenColumns, setHiddenColumns] = useState([]);
   const [draggedColumn, setDraggedColumn] = useState(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
+
+  // Persist search term to localStorage
+  useEffect(() => {
+    localStorage.setItem('sales-searchTerm', searchTerm);
+  }, [searchTerm]);
+
+  // Clear search term when component unmounts (tab change)
+  useEffect(() => {
+    return () => {
+      const currentTab = localStorage.getItem('activeTab');
+      if (currentTab !== 'sales') {
+        localStorage.setItem('sales-searchTerm', '');
+      }
+    };
+  }, []);
 
   // Load column settings
   useEffect(() => {
