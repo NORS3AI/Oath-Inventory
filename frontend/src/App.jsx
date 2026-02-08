@@ -9,6 +9,7 @@ import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
 import Reports from './components/Reports';
 import Labeling from './components/Labeling';
+import packageJson from '../package.json';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -64,7 +65,7 @@ function App() {
                   <Moon className="w-5 h-5 text-gray-600" />
                 )}
               </button>
-              <span className="text-sm text-gray-600 dark:text-gray-400">v1.0.0</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">v{packageJson.version}</span>
             </div>
           </div>
         </div>
