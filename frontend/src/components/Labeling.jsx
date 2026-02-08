@@ -6,10 +6,29 @@ import { useToast } from './Toast';
 
 export default function Labeling({ peptides, onRefresh }) {
   const [labeledItems, setLabeledItems] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    // Restore search term from localStorage
+    return localStorage.getItem('labeling-searchTerm') || '';
+  });
   const [filterView, setFilterView] = useState('all'); // all, labeled, unlabeled, partial
   const [loading, setLoading] = useState(true);
   const { success, error: showError } = useToast();
+
+  // Persist search term to localStorage
+  useEffect(() => {
+    localStorage.setItem('labeling-searchTerm', searchTerm);
+  }, [searchTerm]);
+
+  // Clear search term when component unmounts (tab change)
+  useEffect(() => {
+    return () => {
+      // Only clear if user is navigating away, not just re-rendering
+      const currentTab = localStorage.getItem('activeTab');
+      if (currentTab !== 'labeling') {
+        localStorage.setItem('labeling-searchTerm', '');
+      }
+    };
+  }, []);
 
   // Load labeled items from database
   useEffect(() => {

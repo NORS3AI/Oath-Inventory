@@ -28,7 +28,10 @@ const DEFAULT_COLUMNS = [
 ];
 
 export default function InventoryTable({ peptides, allPeptides, onRefresh, thresholds, bulkExclude }) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    // Restore search term from localStorage
+    return localStorage.getItem('inventory-searchTerm') || '';
+  });
   const [sortField, setSortField] = useState('peptideId');
   const [sortDirection, setSortDirection] = useState('asc');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -45,6 +48,21 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
   const [excludeMode, setExcludeMode] = useState(false);
   const [selectedForExclusion, setSelectedForExclusion] = useState(new Set());
   const { success, error: showError } = useToast();
+
+  // Persist search term to localStorage
+  useEffect(() => {
+    localStorage.setItem('inventory-searchTerm', searchTerm);
+  }, [searchTerm]);
+
+  // Clear search term when component unmounts (tab change)
+  useEffect(() => {
+    return () => {
+      const currentTab = localStorage.getItem('activeTab');
+      if (currentTab !== 'inventory') {
+        localStorage.setItem('inventory-searchTerm', '');
+      }
+    };
+  }, []);
 
   // Wrapper function to preserve scroll position during refresh
   const handleRefreshWithScrollPreservation = () => {
