@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Download, TrendingUp, Clock, Package, CheckCircle, AlertTriangle, FileText, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon, AreaChart as AreaChartIcon } from 'lucide-react';
+import { Download, TrendingUp, Clock, Package, CheckCircle, AlertTriangle, FileText, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon, AreaChart as AreaChartIcon, ArrowUpDown } from 'lucide-react';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { calculateStockStatus } from '../utils/stockStatus';
 import { checkSalesReadiness } from '../utils/salesReadiness';
@@ -11,6 +11,26 @@ export default function Reports({ peptides, orders = [], thresholds }) {
   const [velocityChartType, setVelocityChartType] = useState('line'); // line, bar, area
   const [transactions, setTransactions] = useState([]);
   const [timeRange, setTimeRange] = useState(30); // days to show
+  const [lowStockSort, setLowStockSort] = useState({ field: 'peptideId', direction: 'asc' });
+  const [missingReqSort, setMissingReqSort] = useState({ field: 'peptideId', direction: 'asc' });
+
+  // Custom tooltip style for charts with semi-transparent background and bright text
+  const tooltipStyle = {
+    contentStyle: {
+      backgroundColor: 'rgba(31, 41, 55, 0.85)', // Semi-transparent dark background
+      border: 'none',
+      borderRadius: '8px',
+      backdropFilter: 'blur(4px)', // Add blur for better readability
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)'
+    },
+    labelStyle: {
+      color: '#f3f4f6', // Bright light gray for labels
+      fontWeight: 'bold'
+    },
+    itemStyle: {
+      color: '#e5e7eb' // Bright light gray for items
+    }
+  };
 
   // Fetch transactions
   useEffect(() => {
@@ -436,14 +456,14 @@ ${stats.needsAttention.map(p =>
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                 </PieChart>
               ) : chartType === 'bar' ? (
                 <BarChart data={chartData.stockData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                   <Legend />
                   <Bar dataKey="value" name="Count">
                     {chartData.stockData.map((entry, index) => (
@@ -456,7 +476,7 @@ ${stats.needsAttention.map(p =>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                   <Legend />
                   <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} name="Count" />
                 </LineChart>
@@ -465,7 +485,7 @@ ${stats.needsAttention.map(p =>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                   <Legend />
                   <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="Count" />
                 </AreaChart>
@@ -493,14 +513,14 @@ ${stats.needsAttention.map(p =>
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                 </PieChart>
               ) : chartType === 'bar' ? (
                 <BarChart data={chartData.salesData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                   <Legend />
                   <Bar dataKey="value" name="Count">
                     {chartData.salesData.map((entry, index) => (
@@ -513,7 +533,7 @@ ${stats.needsAttention.map(p =>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                   <Legend />
                   <Line type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2} name="Count" />
                 </LineChart>
@@ -522,7 +542,7 @@ ${stats.needsAttention.map(p =>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                   <Legend />
                   <Area type="monotone" dataKey="value" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} name="Count" />
                 </AreaChart>
@@ -620,7 +640,7 @@ ${stats.needsAttention.map(p =>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                       <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
                       <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                      <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                       <Legend />
                       <Line type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} name="Units Sold" />
                     </LineChart>
@@ -629,7 +649,7 @@ ${stats.needsAttention.map(p =>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                       <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
                       <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                      <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                       <Legend />
                       <Bar dataKey="sales" fill="#3b82f6" name="Units Sold" />
                     </BarChart>
@@ -638,7 +658,7 @@ ${stats.needsAttention.map(p =>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                       <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
                       <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                      <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                       <Legend />
                       <Area type="monotone" dataKey="sales" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="Units Sold" />
                     </AreaChart>
@@ -662,7 +682,7 @@ ${stats.needsAttention.map(p =>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                     <XAxis type="number" stroke="#6b7280" style={{ fontSize: '12px' }} />
                     <YAxis type="category" dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} width={100} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                    <Tooltip contentStyle={tooltipStyle.contentStyle} labelStyle={tooltipStyle.labelStyle} itemStyle={tooltipStyle.itemStyle} />
                     <Legend />
                     <Bar dataKey="sales" fill="#10b981" name="Total Units Sold" />
                   </BarChart>
@@ -716,19 +736,88 @@ ${stats.needsAttention.map(p =>
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Product
+                  <th
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => {
+                      setLowStockSort({
+                        field: 'peptideId',
+                        direction: lowStockSort.field === 'peptideId' && lowStockSort.direction === 'asc' ? 'desc' : 'asc'
+                      });
+                    }}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>Product</span>
+                      <ArrowUpDown className={`w-4 h-4 ${lowStockSort.field === 'peptideId' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {lowStockSort.field === 'peptideId' && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {lowStockSort.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Status
+                  <th
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => {
+                      setLowStockSort({
+                        field: 'status',
+                        direction: lowStockSort.field === 'status' && lowStockSort.direction === 'asc' ? 'desc' : 'asc'
+                      });
+                    }}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>Status</span>
+                      <ArrowUpDown className={`w-4 h-4 ${lowStockSort.field === 'status' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {lowStockSort.field === 'status' && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {lowStockSort.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Quantity
+                  <th
+                    className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => {
+                      setLowStockSort({
+                        field: 'quantity',
+                        direction: lowStockSort.field === 'quantity' && lowStockSort.direction === 'asc' ? 'desc' : 'asc'
+                      });
+                    }}
+                  >
+                    <div className="flex items-center justify-end space-x-2">
+                      <span>Quantity</span>
+                      <ArrowUpDown className={`w-4 h-4 ${lowStockSort.field === 'quantity' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {lowStockSort.field === 'quantity' && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {lowStockSort.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {stats.lowStockItems.map(item => (
+                {[...stats.lowStockItems].sort((a, b) => {
+                  let aVal = a[lowStockSort.field];
+                  let bVal = b[lowStockSort.field];
+
+                  if (lowStockSort.field === 'status') {
+                    const statusPriority = { 'OUT_OF_STOCK': 1, 'NEARLY_OUT': 2, 'LOW_STOCK': 3 };
+                    aVal = statusPriority[aVal] || 999;
+                    bVal = statusPriority[bVal] || 999;
+                  }
+
+                  if (lowStockSort.field === 'quantity') {
+                    aVal = Number(aVal) || 0;
+                    bVal = Number(bVal) || 0;
+                  }
+
+                  if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                  if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+                  if (aVal < bVal) return lowStockSort.direction === 'asc' ? -1 : 1;
+                  if (aVal > bVal) return lowStockSort.direction === 'asc' ? 1 : -1;
+                  return 0;
+                }).map(item => (
                   <tr key={item.id}>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">
                       {item.peptideId}
@@ -757,19 +846,87 @@ ${stats.needsAttention.map(p =>
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Product
+                  <th
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => {
+                      setMissingReqSort({
+                        field: 'peptideId',
+                        direction: missingReqSort.field === 'peptideId' && missingReqSort.direction === 'asc' ? 'desc' : 'asc'
+                      });
+                    }}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>Product</span>
+                      <ArrowUpDown className={`w-4 h-4 ${missingReqSort.field === 'peptideId' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {missingReqSort.field === 'peptideId' && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {missingReqSort.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Missing Requirements
+                  <th
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => {
+                      setMissingReqSort({
+                        field: 'missing',
+                        direction: missingReqSort.field === 'missing' && missingReqSort.direction === 'asc' ? 'desc' : 'asc'
+                      });
+                    }}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>Missing Requirements</span>
+                      <ArrowUpDown className={`w-4 h-4 ${missingReqSort.field === 'missing' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {missingReqSort.field === 'missing' && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {missingReqSort.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Quantity
+                  <th
+                    className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => {
+                      setMissingReqSort({
+                        field: 'quantity',
+                        direction: missingReqSort.field === 'quantity' && missingReqSort.direction === 'asc' ? 'desc' : 'asc'
+                      });
+                    }}
+                  >
+                    <div className="flex items-center justify-end space-x-2">
+                      <span>Quantity</span>
+                      <ArrowUpDown className={`w-4 h-4 ${missingReqSort.field === 'quantity' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {missingReqSort.field === 'quantity' && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {missingReqSort.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {stats.needsAttention.map(item => (
+                {[...stats.needsAttention].sort((a, b) => {
+                  let aVal = a[missingReqSort.field];
+                  let bVal = b[missingReqSort.field];
+
+                  if (missingReqSort.field === 'missing') {
+                    aVal = a.readiness.missing.join(', ').toLowerCase();
+                    bVal = b.readiness.missing.join(', ').toLowerCase();
+                  }
+
+                  if (missingReqSort.field === 'quantity') {
+                    aVal = Number(aVal) || 0;
+                    bVal = Number(bVal) || 0;
+                  }
+
+                  if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                  if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+                  if (aVal < bVal) return missingReqSort.direction === 'asc' ? -1 : 1;
+                  if (aVal > bVal) return missingReqSort.direction === 'asc' ? 1 : -1;
+                  return 0;
+                }).map(item => (
                   <tr key={item.id}>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">
                       {item.peptideId}
