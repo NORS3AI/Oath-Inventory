@@ -14,7 +14,7 @@ function App() {
     // Restore active tab from localStorage on page load
     return localStorage.getItem('activeTab') || 'dashboard';
   });
-  const { peptides, loading, thresholds, stats, refresh } = useInventory();
+  const { peptides, allPeptides, loading, thresholds, stats, refresh, bulkExclude } = useInventory();
   const { isDark, toggle } = useDarkMode();
   const [orders, setOrders] = useState([]);
 
@@ -122,8 +122,10 @@ function App() {
             {activeTab === 'inventory' && (
               <InventoryView
                 peptides={peptides}
+                allPeptides={allPeptides}
                 thresholds={thresholds}
                 onRefresh={refresh}
+                bulkExclude={bulkExclude}
               />
             )}
             {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
@@ -275,7 +277,7 @@ function DashboardView({ stats, onNavigate }) {
   );
 }
 
-function InventoryView({ peptides, thresholds, onRefresh }) {
+function InventoryView({ peptides, allPeptides, thresholds, onRefresh, bulkExclude }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -286,8 +288,10 @@ function InventoryView({ peptides, thresholds, onRefresh }) {
       </div>
       <InventoryTable
         peptides={peptides}
+        allPeptides={allPeptides}
         onRefresh={onRefresh}
         thresholds={thresholds}
+        bulkExclude={bulkExclude}
       />
     </div>
   );
