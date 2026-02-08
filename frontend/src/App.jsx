@@ -81,12 +81,6 @@ function App() {
               onClick={() => setActiveTab('dashboard')}
             />
             <NavButton
-              icon={<Upload className="w-5 h-5" />}
-              label="Import CSV"
-              active={activeTab === 'import'}
-              onClick={() => setActiveTab('import')}
-            />
-            <NavButton
               icon={<Package className="w-5 h-5" />}
               label="Inventory"
               active={activeTab === 'inventory'}
@@ -110,6 +104,12 @@ function App() {
               label="Reports"
               active={activeTab === 'reports'}
               onClick={() => setActiveTab('reports')}
+            />
+            <NavButton
+              icon={<Upload className="w-5 h-5" />}
+              label="Import CSV"
+              active={activeTab === 'import'}
+              onClick={() => setActiveTab('import')}
             />
           </div>
         </div>
@@ -305,6 +305,19 @@ function InventoryView({ peptides, thresholds, onRefresh }) {
 }
 
 function LabelingView({ peptides, onRefresh }) {
+  console.log('LabelingView rendering with', peptides?.length || 0, 'peptides');
+
+  if (!peptides) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Label Management</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Loading peptides...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
