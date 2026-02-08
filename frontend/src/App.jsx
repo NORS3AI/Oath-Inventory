@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Upload, Tags, CheckCircle, BarChart3, Moon, Sun, FileText } from 'lucide-react';
+import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText } from 'lucide-react';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
 import { ToastProvider } from './components/Toast';
@@ -8,7 +8,6 @@ import CSVUpload from './components/CSVUpload';
 import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
 import Reports from './components/Reports';
-import LabelManagement from './components/LabelManagement';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -88,12 +87,6 @@ function App() {
               badge={stats.total}
             />
             <NavButton
-              icon={<Tags className="w-5 h-5" />}
-              label="Labeling"
-              active={activeTab === 'labeling'}
-              onClick={() => setActiveTab('labeling')}
-            />
-            <NavButton
               icon={<CheckCircle className="w-5 h-5" />}
               label="Sales Ready"
               active={activeTab === 'sales'}
@@ -124,7 +117,7 @@ function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'dashboard' && <DashboardView stats={stats} />}
+            {activeTab === 'dashboard' && <DashboardView stats={stats} onNavigate={setActiveTab} />}
             {activeTab === 'import' && <CSVUpload onImportComplete={handleImportComplete} />}
             {activeTab === 'inventory' && (
               <InventoryView
@@ -133,7 +126,6 @@ function App() {
                 onRefresh={refresh}
               />
             )}
-            {activeTab === 'labeling' && <LabelingView peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
             {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
           </>
@@ -176,7 +168,7 @@ function NavButton({ icon, label, active, onClick, badge }) {
   );
 }
 
-function DashboardView({ stats }) {
+function DashboardView({ stats, onNavigate }) {
   return (
     <div className="space-y-6">
       <div>
@@ -222,7 +214,7 @@ function DashboardView({ stats }) {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <StatCard
           title="Total Peptides"
           value={stats.total.toString()}
@@ -234,12 +226,6 @@ function DashboardView({ stats }) {
           value={stats.needsOrdering.toString()}
           subtitle="Requires attention"
           icon={<Package className="w-8 h-8 text-orange-600 dark:text-orange-400" />}
-        />
-        <StatCard
-          title="Need Labeling"
-          value="0"
-          subtitle="Awaiting labels"
-          icon={<Tags className="w-8 h-8 text-purple-600 dark:text-purple-400" />}
         />
       </div>
 
@@ -253,8 +239,8 @@ function DashboardView({ stats }) {
           <ol className="list-decimal list-inside space-y-2 text-blue-800 dark:text-blue-300">
             <li>Import your inventory CSV file using the "Import CSV" tab</li>
             <li>Review your inventory in the "Inventory" tab</li>
-            <li>Track peptides that need labeling in the "Labeling" tab</li>
             <li>Monitor sales-ready items in the "Sales Ready" tab</li>
+            <li>View reports and analytics in the "Reports" tab</li>
           </ol>
         </div>
       ) : (
@@ -266,7 +252,10 @@ function DashboardView({ stats }) {
                 <span className="text-orange-900 dark:text-orange-200 font-medium">
                   {stats.needsOrdering} peptide{stats.needsOrdering !== 1 ? 's' : ''} need ordering
                 </span>
-                <button className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 font-medium">
+                <button
+                  onClick={() => onNavigate('inventory')}
+                  className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 font-medium transition-colors"
+                >
                   View →
                 </button>
               </div>
@@ -300,31 +289,6 @@ function InventoryView({ peptides, thresholds, onRefresh }) {
         onRefresh={onRefresh}
         thresholds={thresholds}
       />
-    </div>
-  );
-}
-
-function LabelingView({ peptides, onRefresh }) {
-  console.log('LabelingView rendering with', peptides?.length || 0, 'peptides');
-
-  if (!peptides) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Label Management</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Loading peptides...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Label Management</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage label inventory and apply labels to peptides</p>
-      </div>
-      <LabelManagement peptides={peptides} onRefresh={onRefresh} />
     </div>
   );
 }
