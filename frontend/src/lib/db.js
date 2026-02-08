@@ -87,7 +87,13 @@ export const db = {
       const results = [];
       for (const peptide of peptides) {
         const id = peptide.peptideId || peptide.id;
-        results.push(await this.set(id, peptide));
+        // Preserve labeledCount from existing peptide if present
+        const existing = await this.get(id);
+        const mergedData = {
+          ...peptide,
+          labeledCount: existing?.labeledCount ?? (peptide.labeledCount || 0)
+        };
+        results.push(await this.set(id, mergedData));
       }
       return results;
     }

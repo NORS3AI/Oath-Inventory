@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText } from 'lucide-react';
+import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag } from 'lucide-react';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
 import { ToastProvider } from './components/Toast';
@@ -8,6 +8,7 @@ import CSVUpload from './components/CSVUpload';
 import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
 import Reports from './components/Reports';
+import Labeling from './components/Labeling';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -87,6 +88,12 @@ function App() {
               badge={stats.total}
             />
             <NavButton
+              icon={<Tag className="w-5 h-5" />}
+              label="Labeling"
+              active={activeTab === 'labeling'}
+              onClick={() => setActiveTab('labeling')}
+            />
+            <NavButton
               icon={<CheckCircle className="w-5 h-5" />}
               label="Sales Ready"
               active={activeTab === 'sales'}
@@ -128,6 +135,7 @@ function App() {
                 bulkExclude={bulkExclude}
               />
             )}
+            {activeTab === 'labeling' && <LabelingView peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
             {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
           </>
@@ -293,6 +301,18 @@ function InventoryView({ peptides, allPeptides, thresholds, onRefresh, bulkExclu
         thresholds={thresholds}
         bulkExclude={bulkExclude}
       />
+    </div>
+  );
+}
+
+function LabelingView({ peptides, onRefresh }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Labeling Management</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Track labeled inventory and manage labeling tasks</p>
+      </div>
+      <Labeling peptides={peptides} onRefresh={onRefresh} />
     </div>
   );
 }
