@@ -87,6 +87,9 @@ export function transformPeptideData(rawData, options = {}) {
         purity: extractField(row, fieldMapping.purity),
         netWeight: extractField(row, fieldMapping.netWeight),
 
+        // Labeling tracking
+        labeledCount: parseNumber(extractField(row, fieldMapping.labeledCount)) || 0,
+
         // Order tracking fields
         orderedDate: extractField(row, fieldMapping.orderedDate),
         orderedQty: parseNumber(extractField(row, fieldMapping.orderedQty)),
@@ -172,6 +175,9 @@ export function getDefaultFieldMapping() {
     batchNumber: ['Batch Number', 'Batch', 'Batch #', 'Lot Number', 'Lot'],
     purity: ['Purity', 'Purity %', 'Purity Percentage'],
     netWeight: ['Size', 'Net Weight', 'Weight', 'Net Wt'],
+
+    // Labeling tracking
+    labeledCount: ['Labeled', 'Labeled Count', 'Labeled Qty', 'Labels Applied'],
 
     // Order tracking
     orderedDate: ['Incoming Arrival', 'Ordered Date', 'Order Date', 'Date Ordered'],
