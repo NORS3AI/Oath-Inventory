@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Calendar, Package, FlaskConical, CheckCircle, X, Plus } from 'lucide-react';
-import { db } from '../lib/db';
+import { db } from '../lib/dbCompat';
 
 export default function OrderManagement({ peptide, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState('place-order');

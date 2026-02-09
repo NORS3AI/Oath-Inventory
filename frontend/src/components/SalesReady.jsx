@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Package, Search, ArrowUpDown, List, GripVertical } from 'lucide-react';
 import { checkSalesReadiness, getReadinessStats, filterByReadiness } from '../utils/salesReadiness';
-import { db } from '../lib/db';
+import { db } from '../lib/dbCompat';
 import ColumnReorderModal from './ColumnReorderModal';
 
 // Define all available columns

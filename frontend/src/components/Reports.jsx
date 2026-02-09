@@ -4,7 +4,7 @@ import { PieChart, Pie, BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, 
 import { calculateStockStatus } from '../utils/stockStatus';
 import { checkSalesReadiness } from '../utils/salesReadiness';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
-import { db } from '../lib/db';
+import { db } from '../lib/dbCompat';
 
 export default function Reports({ peptides, orders = [], thresholds }) {
   const [chartType, setChartType] = useState('pie'); // pie, bar, line, area

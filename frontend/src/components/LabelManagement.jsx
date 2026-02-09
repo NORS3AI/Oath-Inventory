@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Tags, Plus, Minus, CheckCircle, AlertCircle, TrendingUp, Package, ChevronUp, ChevronDown } from 'lucide-react';
-import { db } from '../lib/db';
+import { db } from '../lib/dbCompat';
 import { useToast } from './Toast';
 
 export default function LabelManagement({ peptides, onRefresh }) {

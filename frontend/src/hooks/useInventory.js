@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { db } from '../lib/db';
+import { peptidesApi, exclusionsApi } from '../services/api';
 import { calculateStockStatus, getDefaultThresholds } from '../utils/stockStatus';
 
 // Default exclusions
@@ -39,11 +39,13 @@ export function useInventory() {
   // Load exclusions from settings
   const loadExclusions = useCallback(async () => {
     try {
-      const saved = await db.settings.get('excludedProducts');
-      setExclusions(saved || DEFAULT_EXCLUSIONS);
-      return saved || DEFAULT_EXCLUSIONS;
+      const saved = await exclusionsApi.getAll();
+      const exclusionList = saved.length > 0 ? saved : DEFAULT_EXCLUSIONS;
+      setExclusions(exclusionList);
+      return exclusionList;
     } catch (error) {
       console.error('Failed to load exclusions:', error);
+      setExclusions(DEFAULT_EXCLUSIONS);
       return DEFAULT_EXCLUSIONS;
     }
   }, []);
@@ -52,7 +54,7 @@ export function useInventory() {
   const loadPeptides = useCallback(async () => {
     try {
       setLoading(true);
-      const loadedPeptides = await db.peptides.getAll();
+      const loadedPeptides = await peptidesApi.getAll();
       setAllPeptides(loadedPeptides);
 
       // Load exclusions and filter
@@ -61,18 +63,25 @@ export function useInventory() {
       setPeptides(filtered);
     } catch (error) {
       console.error('Failed to load peptides:', error);
+      setAllPeptides([]);
+      setPeptides([]);
     } finally {
       setLoading(false);
     }
   }, [loadExclusions]);
 
-  // Load thresholds from settings
+  // Load thresholds from settings (stored in localStorage as UI preference)
   const loadThresholds = useCallback(async () => {
     try {
-      const savedThresholds = await db.settings.getStockThresholds();
-      setThresholds(savedThresholds);
+      const saved = localStorage.getItem('stockThresholds');
+      if (saved) {
+        setThresholds(JSON.parse(saved));
+      } else {
+        setThresholds(getDefaultThresholds());
+      }
     } catch (error) {
       console.error('Failed to load thresholds:', error);
+      setThresholds(getDefaultThresholds());
     }
   }, []);
 
@@ -114,7 +123,21 @@ export function useInventory() {
   const savePeptide = useCallback(async (peptideData) => {
     try {
       const id = peptideData.peptideId || peptideData.id;
-      await db.peptides.set(id, peptideData);
+
+      // Check if peptide exists
+      try {
+        await peptidesApi.get(id);
+        // Exists, so update
+        await peptidesApi.update(id, peptideData);
+      } catch (error) {
+        if (error.status === 404) {
+          // Doesn't exist, so create
+          await peptidesApi.create(peptideData);
+        } else {
+          throw error;
+        }
+      }
+
       await loadPeptides();
       return { success: true };
     } catch (error) {
@@ -126,7 +149,7 @@ export function useInventory() {
   // Delete peptide
   const deletePeptide = useCallback(async (id) => {
     try {
-      await db.peptides.delete(id);
+      await peptidesApi.delete(id);
       await loadPeptides();
       return { success: true };
     } catch (error) {
@@ -138,7 +161,10 @@ export function useInventory() {
   // Update quantity
   const updateQuantity = useCallback(async (id, quantity) => {
     try {
-      await db.peptides.update(id, { quantity: Number(quantity) });
+      // Get current peptide data
+      const current = await peptidesApi.get(id);
+      // Update with new quantity
+      await peptidesApi.update(id, { ...current, quantity: Number(quantity) });
       await loadPeptides();
       return { success: true };
     } catch (error) {
@@ -147,10 +173,14 @@ export function useInventory() {
     }
   }, [loadPeptides]);
 
-  // Clear all data
+  // Clear all data (WARNING: This will delete all peptides)
   const clearAll = useCallback(async () => {
     try {
-      await db.peptides.clear();
+      const allPeptides = await peptidesApi.getAll();
+      // Delete each peptide individually
+      for (const peptide of allPeptides) {
+        await peptidesApi.delete(peptide.peptideId);
+      }
       await loadPeptides();
       return { success: true };
     } catch (error) {
@@ -159,10 +189,10 @@ export function useInventory() {
     }
   }, [loadPeptides]);
 
-  // Update thresholds
+  // Update thresholds (stored in localStorage as UI preference)
   const updateThresholds = useCallback(async (newThresholds) => {
     try {
-      await db.settings.setStockThresholds(newThresholds);
+      localStorage.setItem('stockThresholds', JSON.stringify(newThresholds));
       setThresholds(newThresholds);
       return { success: true };
     } catch (error) {
@@ -176,7 +206,7 @@ export function useInventory() {
     try {
       // Add peptide IDs to exclusion list
       const newExclusions = [...new Set([...exclusions, ...peptideIds])];
-      await db.settings.set('excludedProducts', newExclusions);
+      await exclusionsApi.bulkSet(newExclusions);
       setExclusions(newExclusions);
 
       // Re-filter peptides
