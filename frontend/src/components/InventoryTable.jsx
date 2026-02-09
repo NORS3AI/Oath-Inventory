@@ -34,8 +34,14 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
     // Restore search term from localStorage
     return localStorage.getItem('inventory-searchTerm') || '';
   });
-  const [sortField, setSortField] = useState('peptideId');
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [sortField, setSortField] = useState(() => {
+    // Restore sort field from localStorage
+    return localStorage.getItem('inventory-sortField') || 'peptideId';
+  });
+  const [sortDirection, setSortDirection] = useState(() => {
+    // Restore sort direction from localStorage
+    return localStorage.getItem('inventory-sortDirection') || 'asc';
+  });
   const [filterStatus, setFilterStatus] = useState('all');
   const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
   const [hiddenColumns, setHiddenColumns] = useState([]);
@@ -56,6 +62,16 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
   useEffect(() => {
     localStorage.setItem('inventory-searchTerm', searchTerm);
   }, [searchTerm]);
+
+  // Persist sort field to localStorage
+  useEffect(() => {
+    localStorage.setItem('inventory-sortField', sortField);
+  }, [sortField]);
+
+  // Persist sort direction to localStorage
+  useEffect(() => {
+    localStorage.setItem('inventory-sortDirection', sortDirection);
+  }, [sortDirection]);
 
   // Clear search term when component unmounts (tab change)
   useEffect(() => {
