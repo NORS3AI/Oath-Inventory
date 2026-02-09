@@ -136,7 +136,14 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
     return peptides.map(peptide => {
       const quantity = Number(peptide.quantity) || 0;
       const labeledCount = Number(peptide.labeledCount) || 0;
-      const offBooks = Math.max(0, labeledCount - quantity);
+
+      // Calculate off books: if quantity is 0 but items are labeled, all labeled items are off books
+      let offBooks;
+      if (quantity === 0 && labeledCount > 0) {
+        offBooks = labeledCount;
+      } else {
+        offBooks = Math.max(0, labeledCount - quantity);
+      }
 
       return {
         ...peptide,
