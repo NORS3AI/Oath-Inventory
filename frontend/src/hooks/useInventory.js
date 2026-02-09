@@ -23,8 +23,9 @@ function isExcluded(peptide, exclusions) {
 
   return exclusions.some(exclusion => {
     const exc = exclusion.toLowerCase();
-    return peptideId.includes(exc) || peptideName.includes(exc) ||
-           exc.includes(peptideId) || exc.includes(peptideName);
+    // Only check if peptide ID or name contains the exclusion pattern
+    // Removed bidirectional matching to prevent overly broad exclusions
+    return peptideId.includes(exc) || peptideName.includes(exc);
   });
 }
 
