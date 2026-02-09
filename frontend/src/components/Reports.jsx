@@ -43,11 +43,18 @@ export default function Reports({ peptides, orders = [], thresholds }) {
 
   // Calculate comprehensive statistics
   const stats = useMemo(() => {
-    const peptidesWithStatus = peptides.map(p => ({
-      ...p,
-      status: calculateStockStatus(p.quantity, thresholds, p.hasActiveOrder),
-      readiness: checkSalesReadiness(p)
-    }));
+    const peptidesWithStatus = peptides.map(p => {
+      const quantity = Number(p.quantity) || 0;
+      const labeledCount = Number(p.labeledCount) || 0;
+      const offBooks = Math.max(0, labeledCount - quantity);
+
+      return {
+        ...p,
+        offBooks,
+        status: calculateStockStatus(quantity, thresholds, p.hasActiveOrder),
+        readiness: checkSalesReadiness(p)
+      };
+    });
 
     const statusCounts = {
       outOfStock: 0,

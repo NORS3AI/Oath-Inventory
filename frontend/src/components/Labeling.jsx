@@ -157,18 +157,25 @@ export default function Labeling({ peptides, onRefresh }) {
 
   // Export labeling report
   const handleExportReport = () => {
-    const reportData = peptides.map(p => ({
-      'Product ID': p.peptideId || '',
-      'SKU': p.peptideName || '',
-      'Batch Number': p.batchNumber || '',
-      'Total Quantity': p.quantity || 0,
-      'Labeled Count': p.labeledCount || 0,
-      'Unlabeled Count': (Number(p.quantity) || 0) - (Number(p.labeledCount) || 0),
-      'Status': getLabelStatus(p),
-      'Received Date': p.receivedDate || '',
-      'Net Weight': p.netWeight || '',
-      'Purity': p.purity || ''
-    }));
+    const reportData = peptides.map(p => {
+      const quantity = Number(p.quantity) || 0;
+      const labeledCount = Number(p.labeledCount) || 0;
+      const offBooks = Math.max(0, labeledCount - quantity);
+
+      return {
+        'Product ID': p.peptideId || '',
+        'SKU': p.peptideName || '',
+        'Batch Number': p.batchNumber || '',
+        'Total Quantity': quantity,
+        'Labeled Count': labeledCount,
+        'Off Books': offBooks,
+        'Unlabeled Count': quantity - labeledCount,
+        'Status': getLabelStatus(p),
+        'Received Date': p.receivedDate || '',
+        'Net Weight': p.netWeight || '',
+        'Purity': p.purity || ''
+      };
+    });
 
     const csv = exportToCSV(reportData);
     const filename = `labeling-report-${new Date().toISOString().split('T')[0]}.csv`;

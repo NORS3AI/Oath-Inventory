@@ -92,12 +92,19 @@ export default function SalesReady({ peptides }) {
   // Calculate statistics
   const stats = useMemo(() => getReadinessStats(peptides), [peptides]);
 
-  // Add readiness check to peptides
+  // Add readiness check and off books calculation to peptides
   const peptidesWithReadiness = useMemo(() => {
-    return peptides.map(p => ({
-      ...p,
-      readiness: checkSalesReadiness(p)
-    }));
+    return peptides.map(p => {
+      const quantity = Number(p.quantity) || 0;
+      const labeledCount = Number(p.labeledCount) || 0;
+      const offBooks = Math.max(0, labeledCount - quantity);
+
+      return {
+        ...p,
+        offBooks,
+        readiness: checkSalesReadiness(p)
+      };
+    });
   }, [peptides]);
 
   // Filter and search

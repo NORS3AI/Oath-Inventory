@@ -16,6 +16,7 @@ const DEFAULT_COLUMNS = [
   { id: 'peptideName', label: 'SKU', field: 'peptideName', sortable: true },
   { id: 'quantity', label: 'Quantity', field: 'quantity', sortable: true },
   { id: 'labeledCount', label: 'Labeled', field: 'labeledCount', sortable: true },
+  { id: 'offBooks', label: 'Off Books', field: 'offBooks', sortable: true },
   { id: 'status', label: 'Status', field: 'status', sortable: true },
   { id: 'batchNumber', label: 'Batch #', field: 'batchNumber', sortable: true },
   { id: 'netWeight', label: 'Net Weight', field: 'netWeight', sortable: true },
@@ -130,12 +131,19 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
     return columnOrder.filter(col => !hiddenColumns.includes(col.id));
   }, [columnOrder, hiddenColumns]);
 
-  // Calculate status for each peptide
+  // Calculate status and off books for each peptide
   const peptidesWithStatus = useMemo(() => {
-    return peptides.map(peptide => ({
-      ...peptide,
-      status: calculateStockStatus(peptide.quantity, thresholds, peptide.hasActiveOrder || false)
-    }));
+    return peptides.map(peptide => {
+      const quantity = Number(peptide.quantity) || 0;
+      const labeledCount = Number(peptide.labeledCount) || 0;
+      const offBooks = Math.max(0, labeledCount - quantity);
+
+      return {
+        ...peptide,
+        offBooks,
+        status: calculateStockStatus(quantity, thresholds, peptide.hasActiveOrder || false)
+      };
+    });
   }, [peptides, thresholds]);
 
   // Filter and search
@@ -164,7 +172,7 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
       let bVal = b[sortField];
 
       // Handle numeric sorting
-      if (sortField === 'quantity' || sortField === 'orderedQty') {
+      if (sortField === 'quantity' || sortField === 'orderedQty' || sortField === 'offBooks') {
         aVal = Number(aVal) || 0;
         bVal = Number(bVal) || 0;
       }
@@ -217,7 +225,7 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
   };
 
   const handleExport = () => {
-    const csvContent = exportToCSV(peptides);
+    const csvContent = exportToCSV(peptidesWithStatus);
     downloadCSV(csvContent, `oath-inventory-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
@@ -367,6 +375,28 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
       return (
         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
           {labeledCount} / {quantity} ({percentage}%)
+        </span>
+      );
+    }
+
+    if (column.id === 'offBooks') {
+      const offBooks = peptide.offBooks || 0;
+
+      // Color coding based on off books count
+      let colorClass = '';
+      if (offBooks === 0) {
+        colorClass = 'text-gray-600 dark:text-gray-400';
+      } else if (offBooks <= 5) {
+        colorClass = 'text-blue-600 dark:text-blue-400 font-medium';
+      } else if (offBooks <= 10) {
+        colorClass = 'text-green-600 dark:text-green-400 font-medium';
+      } else {
+        colorClass = 'text-teal-600 dark:text-teal-400 font-bold';
+      }
+
+      return (
+        <span className={colorClass}>
+          {offBooks}
         </span>
       );
     }
