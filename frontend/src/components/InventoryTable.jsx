@@ -137,11 +137,16 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
       const quantity = Number(peptide.quantity) || 0;
       const labeledCount = Number(peptide.labeledCount) || 0;
 
-      // Calculate off books: if quantity is 0 but items are labeled, all labeled items are off books
+      // Calculate off books
       let offBooks;
       if (quantity === 0 && labeledCount > 0) {
+        // No official stock but items are labeled - all labeled items are off books
         offBooks = labeledCount;
+      } else if (quantity < 0) {
+        // Negative quantity (backorder) - subtract absolute value from labeled
+        offBooks = Math.max(0, labeledCount - Math.abs(quantity));
       } else {
+        // Positive quantity - normal calculation
         offBooks = Math.max(0, labeledCount - quantity);
       }
 
