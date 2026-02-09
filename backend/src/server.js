@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import db from './database.js';
+import { authenticateToken, login, changePassword, verifyToken } from './auth.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
@@ -23,10 +24,29 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
+// ========== PUBLIC ENDPOINTS ==========
+
+// Health check - no authentication required
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' });
+});
+
+// Login endpoint - no authentication required
+app.post('/api/auth/login', login);
+
+// ========== PROTECTED ENDPOINTS ==========
+// All endpoints below require authentication
+
+// Verify token endpoint
+app.get('/api/auth/verify', authenticateToken, verifyToken);
+
+// Change password endpoint
+app.post('/api/auth/change-password', authenticateToken, changePassword);
+
 // ========== PEPTIDES ENDPOINTS ==========
 
 // Get all peptides
-app.get('/api/peptides', (req, res) => {
+app.get('/api/peptides', authenticateToken, (req, res) => {
   try {
     const peptides = db.prepare('SELECT * FROM peptides ORDER BY peptideId').all();
     res.json(peptides);
@@ -37,7 +57,7 @@ app.get('/api/peptides', (req, res) => {
 });
 
 // Get single peptide
-app.get('/api/peptides/:id', (req, res) => {
+app.get('/api/peptides/:id', authenticateToken, (req, res) => {
   try {
     const peptide = db.prepare('SELECT * FROM peptides WHERE peptideId = ?').get(req.params.id);
     if (!peptide) {
@@ -51,7 +71,7 @@ app.get('/api/peptides/:id', (req, res) => {
 });
 
 // Create new peptide
-app.post('/api/peptides', (req, res) => {
+app.post('/api/peptides', authenticateToken, (req, res) => {
   try {
     const peptide = req.body;
     const now = new Date().toISOString();
@@ -97,7 +117,7 @@ app.post('/api/peptides', (req, res) => {
 });
 
 // Update peptide
-app.put('/api/peptides/:id', (req, res) => {
+app.put('/api/peptides/:id', authenticateToken, (req, res) => {
   try {
     const peptide = req.body;
     const now = new Date().toISOString();
@@ -155,7 +175,7 @@ app.put('/api/peptides/:id', (req, res) => {
 });
 
 // Delete peptide
-app.delete('/api/peptides/:id', (req, res) => {
+app.delete('/api/peptides/:id', authenticateToken, (req, res) => {
   try {
     const stmt = db.prepare('DELETE FROM peptides WHERE peptideId = ?');
     const result = stmt.run(req.params.id);
@@ -172,7 +192,7 @@ app.delete('/api/peptides/:id', (req, res) => {
 });
 
 // Bulk import peptides
-app.post('/api/peptides/bulk', (req, res) => {
+app.post('/api/peptides/bulk', authenticateToken, (req, res) => {
   try {
     const peptides = req.body.peptides;
     const now = new Date().toISOString();
@@ -238,7 +258,7 @@ app.post('/api/peptides/bulk', (req, res) => {
 // ========== EXCLUSIONS ENDPOINTS ==========
 
 // Get all exclusions
-app.get('/api/exclusions', (req, res) => {
+app.get('/api/exclusions', authenticateToken, (req, res) => {
   try {
     const exclusions = db.prepare('SELECT pattern FROM exclusions ORDER BY pattern').all();
     res.json(exclusions.map(e => e.pattern));
@@ -249,7 +269,7 @@ app.get('/api/exclusions', (req, res) => {
 });
 
 // Add exclusion
-app.post('/api/exclusions', (req, res) => {
+app.post('/api/exclusions', authenticateToken, (req, res) => {
   try {
     const { pattern } = req.body;
     const stmt = db.prepare('INSERT INTO exclusions (pattern) VALUES (?)');
@@ -266,7 +286,7 @@ app.post('/api/exclusions', (req, res) => {
 });
 
 // Delete exclusion
-app.delete('/api/exclusions/:pattern', (req, res) => {
+app.delete('/api/exclusions/:pattern', authenticateToken, (req, res) => {
   try {
     const stmt = db.prepare('DELETE FROM exclusions WHERE pattern = ?');
     const result = stmt.run(decodeURIComponent(req.params.pattern));
@@ -283,7 +303,7 @@ app.delete('/api/exclusions/:pattern', (req, res) => {
 });
 
 // Bulk set exclusions
-app.post('/api/exclusions/bulk', (req, res) => {
+app.post('/api/exclusions/bulk', authenticateToken, (req, res) => {
   try {
     const { patterns } = req.body;
 
@@ -310,7 +330,7 @@ app.post('/api/exclusions/bulk', (req, res) => {
 // ========== LABEL HISTORY ENDPOINTS ==========
 
 // Get label history for a peptide
-app.get('/api/label-history/:peptideId', (req, res) => {
+app.get('/api/label-history/:peptideId', authenticateToken, (req, res) => {
   try {
     const history = db.prepare(`
       SELECT * FROM label_history
@@ -325,7 +345,7 @@ app.get('/api/label-history/:peptideId', (req, res) => {
 });
 
 // Add label history entry
-app.post('/api/label-history', (req, res) => {
+app.post('/api/label-history', authenticateToken, (req, res) => {
   try {
     const { peptideId, quantity, action, notes } = req.body;
     const stmt = db.prepare(`
@@ -340,14 +360,10 @@ app.post('/api/label-history', (req, res) => {
   }
 });
 
-// ========== HEALTH CHECK ==========
-
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
-});
-
 // Start server
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
   console.log(`Database location: ${dataDir}`);
+  console.log(`Authentication: Enabled (default password: "admin")`);
+  console.log(`⚠️  IMPORTANT: Change the default password after first login!`);
 });

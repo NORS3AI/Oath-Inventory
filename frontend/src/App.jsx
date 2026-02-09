@@ -4,6 +4,8 @@ import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
 import { ToastProvider } from './components/Toast';
 import { db } from './lib/db';
+import { authStorage, authApi } from './services/api';
+import Login from './components/Login';
 import CSVUpload from './components/CSVUpload';
 import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
@@ -12,13 +14,67 @@ import Labeling from './components/Labeling';
 import packageJson from '../package.json';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState(() => {
     // Restore active tab from localStorage on page load
     return localStorage.getItem('activeTab') || 'dashboard';
   });
-  const { peptides, allPeptides, loading, thresholds, stats, refresh, bulkExclude } = useInventory();
   const { isDark, toggle } = useDarkMode();
   const [orders, setOrders] = useState([]);
+
+  // Only initialize inventory if authenticated
+  const inventoryHook = isAuthenticated ? useInventory() : {
+    peptides: [],
+    allPeptides: [],
+    loading: false,
+    thresholds: {},
+    stats: { total: 0 },
+    refresh: () => {},
+    bulkExclude: () => {}
+  };
+  const { peptides, allPeptides, loading, thresholds, stats, refresh, bulkExclude } = inventoryHook;
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const hasToken = authStorage.isAuthenticated();
+      if (hasToken) {
+        try {
+          await authApi.verify();
+          setIsAuthenticated(true);
+        } catch (error) {
+          // Token is invalid
+          authStorage.clearToken();
+          setIsAuthenticated(false);
+        }
+      } else {
+        setIsAuthenticated(false);
+      }
+      setAuthChecking(false);
+    };
+
+    checkAuth();
+  }, []);
+
+  // Listen for auth events
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsAuthenticated(false);
+    };
+
+    const handleLogout = () => {
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    window.addEventListener('auth:logout', handleLogout);
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      window.removeEventListener('auth:logout', handleLogout);
+    };
+  }, []);
 
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
@@ -38,6 +94,31 @@ function App() {
     refresh();
     setActiveTab('inventory');
   };
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  // Show loading while checking authentication
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <ToastProvider>
+        <Login onLoginSuccess={handleLoginSuccess} />
+      </ToastProvider>
+    );
+  }
 
   return (
     <ToastProvider>
