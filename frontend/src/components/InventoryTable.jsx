@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban, TrendingDown, Save, X } from 'lucide-react';
+import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban, TrendingDown, Save, X, Plus } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { db } from '../lib/db';
@@ -8,6 +8,7 @@ import QuickEditModal from './QuickEditModal';
 import ColumnReorderModal from './ColumnReorderModal';
 import ExclusionManager from './ExclusionManager';
 import RecordSaleModal from './RecordSaleModal';
+import AddProductModal from './AddProductModal';
 import { useToast } from './Toast';
 
 // Define all available columns
@@ -44,6 +45,7 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
   const [recordSalePeptide, setRecordSalePeptide] = useState(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showExclusionsModal, setShowExclusionsModal] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
 
   // Bulk exclusion state
   const [excludeMode, setExcludeMode] = useState(false);
@@ -558,6 +560,15 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
                   <Download className="w-4 h-4" />
                   <span className="hidden sm:inline">Export</span>
                 </button>
+
+                {/* Add Product Button */}
+                <button
+                  onClick={() => setShowAddProductModal(true)}
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Add Product</span>
+                </button>
               </>
             )}
           </div>
@@ -710,6 +721,13 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
           onComplete={handleRefreshWithScrollPreservation}
         />
       )}
+
+      {/* Add Product Modal */}
+      <AddProductModal
+        isOpen={showAddProductModal}
+        onClose={() => setShowAddProductModal(false)}
+        onSave={handleRefreshWithScrollPreservation}
+      />
     </div>
   );
 }
