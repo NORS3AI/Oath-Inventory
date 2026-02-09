@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban, TrendingDown, Save, X, Plus } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
-import { db } from '../lib/db';
+import { db } from '../lib/dbCompat';
 import OrderManagement from './OrderManagement';
 import QuickEditModal from './QuickEditModal';
 import ColumnReorderModal from './ColumnReorderModal';
