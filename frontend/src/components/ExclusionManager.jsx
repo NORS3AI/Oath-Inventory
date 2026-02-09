@@ -201,20 +201,18 @@ export default function ExclusionManager({ onUpdate, isOpen: controlledIsOpen, o
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                     Currently Excluding ({exclusions.length})
                   </p>
-                  {exclusions
-                    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
-                    .map((exclusion, index) => (
+                  {exclusions.map((exclusion, index) => (
                     <div
                       key={index}
                       className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                     >
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="flex items-center space-x-3">
                         <Ban className="w-4 h-4 text-red-500 flex-shrink-0" />
-                        <span className="text-sm font-mono text-gray-900 dark:text-white break-all">{exclusion}</span>
+                        <span className="text-sm font-mono text-gray-900 dark:text-white">{exclusion}</span>
                       </div>
                       <button
                         onClick={() => handleRemove(exclusion)}
-                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 hover:bg-red-50 dark:hover:bg-red-900 rounded transition-colors ml-2 flex-shrink-0"
+                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 hover:bg-red-50 dark:hover:bg-red-900 rounded transition-colors"
                         title="Remove exclusion"
                       >
                         <Trash2 className="w-4 h-4" />
