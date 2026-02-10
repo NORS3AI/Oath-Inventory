@@ -479,7 +479,7 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="flex flex-col gap-4">
           {/* Main Controls Row */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4">
             {/* Search */}
             {!excludeMode && (
               <div className="flex-1 relative">

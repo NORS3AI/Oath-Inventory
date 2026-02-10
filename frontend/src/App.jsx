@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag } from 'lucide-react';
+import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings } from 'lucide-react';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
 import { ToastProvider } from './components/Toast';
@@ -9,6 +9,7 @@ import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
 import Reports from './components/Reports';
 import Labeling from './components/Labeling';
+import SettingsModal from './components/SettingsModal';
 import packageJson from '../package.json';
 
 function App() {
@@ -18,7 +19,16 @@ function App() {
   });
   const { isDark, toggle } = useDarkMode();
   const [orders, setOrders] = useState([]);
+  const [showSettings, setShowSettings] = useState(false);
   const { peptides, allPeptides, loading, thresholds, stats, refresh, bulkExclude } = useInventory();
+
+  // Load saved font size on mount
+  useEffect(() => {
+    const savedSize = Number(localStorage.getItem('app-font-size'));
+    if (savedSize >= 12 && savedSize <= 24) {
+      document.documentElement.style.fontSize = `${savedSize}px`;
+    }
+  }, []);
 
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
@@ -53,7 +63,14 @@ function App() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">Peptide Inventory System</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Settings"
+              >
+                <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
               <button
                 onClick={toggle}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -65,7 +82,7 @@ function App() {
                   <Moon className="w-5 h-5 text-gray-600" />
                 )}
               </button>
-              <span className="text-sm text-gray-600 dark:text-gray-400">v{packageJson.version}</span>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">v{packageJson.version}</span>
             </div>
           </div>
         </div>
@@ -151,6 +168,9 @@ function App() {
           </p>
         </div>
       </footer>
+
+      {/* Settings Modal */}
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
     </ToastProvider>
   );
