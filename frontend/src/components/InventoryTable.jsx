@@ -186,6 +186,7 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
       const matchesSearch = !searchTerm ||
         peptide.peptideId?.toLowerCase().includes(searchLower) ||
         peptide.peptideName?.toLowerCase().includes(searchLower) ||
+        peptide.nickname?.toLowerCase().includes(searchLower) ||
         peptide.batchNumber?.toLowerCase().includes(searchLower) ||
         peptide.notes?.toLowerCase().includes(searchLower);
 
@@ -456,6 +457,19 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
             <MoreVertical className="w-4 h-4" />
             <span>Manage</span>
           </button>
+        </div>
+      );
+    }
+
+    // Show nickname under product ID in the Product column
+    if (column.id === 'peptideId') {
+      const displayName = peptide.nickname || peptide.peptideName;
+      return (
+        <div>
+          <div>{peptide.peptideId}</div>
+          {displayName && (
+            <div className="text-xs text-gray-400 dark:text-gray-500">{displayName}</div>
+          )}
         </div>
       );
     }

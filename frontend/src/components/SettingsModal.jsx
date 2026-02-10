@@ -3,6 +3,7 @@ import { Settings as SettingsIcon, X, Type, ScrollText } from 'lucide-react';
 
 // Complete patch history with timestamps
 const PATCH_NOTES = [
+  { version: '0.0.102', date: '2026-02-10 14:30', title: 'Add nickname field for products - displays under product name, used as display name when set' },
   { version: '0.0.101', date: '2026-02-10 11:10', title: 'Add bulk edit modal for mass editing all peptides at once' },
   { version: '0.0.100', date: '2026-02-10 10:15', title: 'Update docs/ build to match IndexedDB-only frontend' },
   { version: '0.0.99', date: '2026-02-10 09:59', title: 'Revert frontend to IndexedDB storage, remove backend API/auth dependency' },

@@ -130,6 +130,7 @@ export default function Labeling({ peptides, onRefresh }) {
     return items.filter(p =>
       p.peptideId?.toLowerCase().includes(searchLower) ||
       p.peptideName?.toLowerCase().includes(searchLower) ||
+      p.nickname?.toLowerCase().includes(searchLower) ||
       p.batchNumber?.toLowerCase().includes(searchLower)
     );
   }, [peptides, stats, filterView, searchTerm]);
@@ -472,7 +473,7 @@ function ProductRow({ peptide, onMarkLabeled }) {
       <td className="px-6 py-4">
         <div>
           <div className="font-medium text-gray-900 dark:text-white">{peptide.peptideId}</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{peptide.peptideName}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{peptide.nickname || peptide.peptideName}</div>
         </div>
       </td>
       <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
