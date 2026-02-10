@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle2, X, Trash2, AlertTriangle } from 'lucide-react';
 import { parseInventoryCSV, generateSampleCSV, downloadCSV } from '../utils/csvParser';
-import { peptidesApi, exclusionsApi } from '../services/api';
+import { db } from '../lib/db';
 import ExclusionManager from './ExclusionManager';
 
 export default function CSVUpload({ onImportComplete }) {
@@ -80,8 +80,8 @@ export default function CSVUpload({ onImportComplete }) {
     setResult(null);
 
     try {
-      // Load exclusions from API
-      const excludedProducts = await exclusionsApi.getAll().catch(() => [
+      // Load exclusions from settings
+      const excludedProducts = await db.settings.get('exclusions').catch(() => null) || [
         'OATH-A1-TEST',
         'a1 test',
         'OATH-GH-FRAGMENT-176-191-5MG',
@@ -90,7 +90,7 @@ export default function CSVUpload({ onImportComplete }) {
         'OATH-NAD+-1000MG',
         'OATH-SS-31-10MG',
         'OATH-TESA-IPA-10-5'
-      ]);
+      ];
 
       // Parse CSV with exclusions
       const parseResult = await parseInventoryCSV(file, { excludedProducts });
@@ -100,33 +100,25 @@ export default function CSVUpload({ onImportComplete }) {
 
       if (importMode === 'replace') {
         // Clear all existing data first
-        const allPeptides = await peptidesApi.getAll();
-        for (const peptide of allPeptides) {
-          await peptidesApi.delete(peptide.peptideId);
-        }
+        await db.peptides.clear();
 
         // Import all new data
-        await peptidesApi.bulkImport(parseResult.peptides);
+        await db.peptides.bulkImport(parseResult.peptides);
         importedCount = parseResult.peptides.length;
       } else {
         // Update mode: only update quantity, preserve all other manually edited fields
         for (const peptide of parseResult.peptides) {
-          try {
-            const existing = await peptidesApi.get(peptide.peptideId);
+          const existing = await db.peptides.get(peptide.peptideId);
+          if (existing) {
             // Update ONLY quantity - preserve all manually edited fields
-            await peptidesApi.update(peptide.peptideId, {
-              ...existing,
+            await db.peptides.update(peptide.peptideId, {
               quantity: peptide.quantity
             });
             updatedCount++;
-          } catch (error) {
-            if (error.status === 404) {
-              // Add new peptide with all CSV fields
-              await peptidesApi.create(peptide);
-              importedCount++;
-            } else {
-              throw error;
-            }
+          } else {
+            // Add new peptide with all CSV fields
+            await db.peptides.set(peptide.peptideId, peptide);
+            importedCount++;
           }
         }
       }
@@ -156,10 +148,7 @@ export default function CSVUpload({ onImportComplete }) {
   const handleClearAll = async () => {
     setClearing(true);
     try {
-      const allPeptides = await peptidesApi.getAll();
-      for (const peptide of allPeptides) {
-        await peptidesApi.delete(peptide.peptideId);
-      }
+      await db.peptides.clear();
       setShowClearConfirm(false);
       setResult({
         success: true,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import { db } from '../lib/dbCompat';
+import { db } from '../lib/db';
 
 export default function QuickEditModal({ peptide, onClose, onUpdate, position }) {
   const [activeTab, setActiveTab] = useState('peptideId');

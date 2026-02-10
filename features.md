@@ -164,14 +164,13 @@ Before a peptide can be sold, it must have:
 - Optimized for large datasets
 
 ### Security
-- Data encryption at rest
 - Secure file upload
-- User authentication (future phase)
-- Role-based access control (future phase)
+- Client-side data persistence (IndexedDB)
 
-### Integration Ready
-- API endpoints for external systems
-- Webhook support for notifications
+### Data Storage
+- Browser-based IndexedDB via localforage
+- No external server required
+- Works as a static site on GitHub Pages
 - Export/import standardization
 - Extensible architecture
 
@@ -180,6 +179,11 @@ Before a peptide can be sold, it must have:
 ## Future Enhancements (Post-MVP)
 
 ### Phase 2+ Features
+- **Backend API server** (Express.js + SQLite)
+- **User authentication** (JWT-based login)
+- **Role-based access control**
+- **Cloudflare/CDN integration**
+- **Webhook support for notifications**
 - Barcode/QR code scanning for vials
 - Automated email notifications
 - Integration with testing labs

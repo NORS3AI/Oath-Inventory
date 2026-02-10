@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, TrendingDown } from 'lucide-react';
-import { db } from '../lib/dbCompat';
+import { db } from '../lib/db';
 import { useToast } from './Toast';
 
 export default function RecordSaleModal({ peptide, onClose, onComplete }) {
