@@ -12,6 +12,7 @@ export default function QuickEditModal({ peptide, onClose, onUpdate, position })
   const editableFields = [
     { id: 'peptideId', label: 'Product', type: 'text' },
     { id: 'peptideName', label: 'SKU', type: 'text' },
+    { id: 'nickname', label: 'Nickname', type: 'text' },
     { id: 'labeledCount', label: 'Labeled Count', type: 'number' },
     { id: 'quantity', label: 'Quantity', type: 'number' },
     { id: 'batchNumber', label: 'Batch #', type: 'text' },

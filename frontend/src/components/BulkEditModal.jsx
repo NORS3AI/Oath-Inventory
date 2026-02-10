@@ -15,6 +15,7 @@ export default function BulkEditModal({ isOpen, onClose, peptides, onSave }) {
   const columns = [
     { id: 'peptideId', label: 'Product', type: 'text', readOnly: true },
     { id: 'peptideName', label: 'SKU', type: 'text', width: 'w-48' },
+    { id: 'nickname', label: 'Nickname', type: 'text', width: 'w-40' },
     { id: 'quantity', label: 'Qty', type: 'number', width: 'w-20' },
     { id: 'labeledCount', label: 'Labeled', type: 'number', width: 'w-20' },
     { id: 'batchNumber', label: 'Batch #', type: 'text', width: 'w-32' },

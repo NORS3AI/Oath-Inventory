@@ -129,6 +129,7 @@ export default function SalesReady({ peptides }) {
       filtered = filtered.filter(p =>
         p.peptideId?.toLowerCase().includes(searchLower) ||
         p.peptideName?.toLowerCase().includes(searchLower) ||
+        p.nickname?.toLowerCase().includes(searchLower) ||
         p.batchNumber?.toLowerCase().includes(searchLower)
       );
     }
@@ -259,6 +260,19 @@ export default function SalesReady({ peptides }) {
         <span className="text-red-600 dark:text-red-400">{readiness.missing.join(', ')}</span>
       ) : (
         <span className="text-green-600 dark:text-green-400">None</span>
+      );
+    }
+
+    // Show nickname under product ID
+    if (column.id === 'peptideId') {
+      const displayName = peptide.nickname || peptide.peptideName;
+      return (
+        <div>
+          <div>{peptide.peptideId}</div>
+          {displayName && (
+            <div className="text-xs text-gray-400 dark:text-gray-500">{displayName}</div>
+          )}
+        </div>
       );
     }
 

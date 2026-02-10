@@ -87,6 +87,9 @@ export function transformPeptideData(rawData, options = {}) {
         purity: extractField(row, fieldMapping.purity),
         netWeight: extractField(row, fieldMapping.netWeight),
 
+        // Nickname / display name
+        nickname: extractField(row, fieldMapping.nickname),
+
         // Labeling tracking
         labeledCount: parseNumber(extractField(row, fieldMapping.labeledCount)) || 0,
 
@@ -183,6 +186,9 @@ export function getDefaultFieldMapping() {
     orderedDate: ['Incoming Arrival', 'Ordered Date', 'Order Date', 'Date Ordered'],
     orderedQty: ['Incoming Qty', 'Ordered Qty', 'Order Quantity', 'Qty Ordered'],
 
+    // Nickname / display name
+    nickname: ['Nickname', 'Display Name', 'Alias', 'Short Name'],
+
     // Operational
     velocity: ['Velocity', 'Usage Rate', 'Demand'],
     notes: ['Status', 'Notes', 'Comments', 'Remarks'],
@@ -268,6 +274,7 @@ export function exportToCSV(peptides) {
   const fieldToHeader = {
     peptideId: 'Product',
     peptideName: 'SKU',
+    nickname: 'Nickname',
     quantity: 'Quantity',
     unit: 'Unit',
     batchNumber: 'Batch Number',
