@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
-import { peptidesApi } from '../services/api';
+import { db } from '../lib/db';
 import { useToast } from './Toast';
 
 export default function AddProductModal({ isOpen, onClose, onSave }) {
@@ -55,17 +55,14 @@ export default function AddProductModal({ isOpen, onClose, onSave }) {
       };
 
       // Check if product already exists
-      try {
-        await peptidesApi.get(newProduct.peptideId);
+      const existing = await db.peptides.get(newProduct.peptideId);
+      if (existing) {
         showError(`Product ${newProduct.peptideId} already exists`);
         return;
-      } catch (error) {
-        if (error.status !== 404) throw error;
-        // 404 means doesn't exist, which is what we want
       }
 
       // Save to database
-      await peptidesApi.create(newProduct);
+      await db.peptides.set(newProduct.peptideId, newProduct);
 
       success('Product added successfully');
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Tag, CheckCircle2, AlertCircle, Package, Calendar, TrendingUp, Search, Download } from 'lucide-react';
-import { db } from '../lib/dbCompat';
+import { db } from '../lib/db';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { useToast } from './Toast';
 

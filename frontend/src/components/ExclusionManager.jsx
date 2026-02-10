@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Ban, Plus, Trash2, X } from 'lucide-react';
-import { exclusionsApi } from '../services/api';
+import { db } from '../lib/db';
 
 // Default exclusions
 const DEFAULT_EXCLUSIONS = [
@@ -25,12 +25,12 @@ export default function ExclusionManager({ onUpdate, isOpen: controlledIsOpen, o
   const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
   const setIsOpen = onClose ? onClose : setInternalIsOpen;
 
-  // Load exclusions from API
+  // Load exclusions from IndexedDB settings
   useEffect(() => {
     const loadExclusions = async () => {
       try {
-        const saved = await exclusionsApi.getAll();
-        setExclusions(saved.length > 0 ? saved : DEFAULT_EXCLUSIONS);
+        const saved = await db.settings.get('exclusions');
+        setExclusions(saved && saved.length > 0 ? saved : DEFAULT_EXCLUSIONS);
       } catch (error) {
         console.error('Failed to load exclusions:', error);
         setExclusions(DEFAULT_EXCLUSIONS);
@@ -41,10 +41,10 @@ export default function ExclusionManager({ onUpdate, isOpen: controlledIsOpen, o
     loadExclusions();
   }, []);
 
-  // Save exclusions to API
+  // Save exclusions to IndexedDB settings
   const saveExclusions = async (newList) => {
     try {
-      await exclusionsApi.bulkSet(newList);
+      await db.settings.set('exclusions', newList);
       setExclusions(newList);
       if (onUpdate) onUpdate();
     } catch (error) {
@@ -251,7 +251,7 @@ export function useExclusions() {
   useEffect(() => {
     const loadExclusions = async () => {
       try {
-        const saved = await exclusionsApi.getAll();
+        const saved = await db.settings.get('exclusions');
         if (saved && saved.length > 0) setExclusions(saved);
       } catch (error) {
         console.error('Failed to load exclusions:', error);

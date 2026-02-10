@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { peptidesApi, exclusionsApi } from '../services/api';
+import { db } from '../lib/db';
 import { calculateStockStatus, getDefaultThresholds } from '../utils/stockStatus';
 
 // Default exclusions
@@ -23,8 +23,6 @@ function isExcluded(peptide, exclusions) {
 
   return exclusions.some(exclusion => {
     const exc = exclusion.toLowerCase();
-    // Only check if peptide ID or name contains the exclusion pattern
-    // Removed bidirectional matching to prevent overly broad exclusions
     return peptideId.includes(exc) || peptideName.includes(exc);
   });
 }
@@ -39,8 +37,8 @@ export function useInventory() {
   // Load exclusions from settings
   const loadExclusions = useCallback(async () => {
     try {
-      const saved = await exclusionsApi.getAll();
-      const exclusionList = saved.length > 0 ? saved : DEFAULT_EXCLUSIONS;
+      const saved = await db.settings.get('exclusions');
+      const exclusionList = saved && saved.length > 0 ? saved : DEFAULT_EXCLUSIONS;
       setExclusions(exclusionList);
       return exclusionList;
     } catch (error) {
@@ -54,7 +52,7 @@ export function useInventory() {
   const loadPeptides = useCallback(async () => {
     try {
       setLoading(true);
-      const loadedPeptides = await peptidesApi.getAll();
+      const loadedPeptides = await db.peptides.getAll();
       setAllPeptides(loadedPeptides);
 
       // Load exclusions and filter
@@ -70,12 +68,12 @@ export function useInventory() {
     }
   }, [loadExclusions]);
 
-  // Load thresholds from settings (stored in localStorage as UI preference)
+  // Load thresholds from settings
   const loadThresholds = useCallback(async () => {
     try {
-      const saved = localStorage.getItem('stockThresholds');
+      const saved = await db.settings.getStockThresholds();
       if (saved) {
-        setThresholds(JSON.parse(saved));
+        setThresholds(saved);
       } else {
         setThresholds(getDefaultThresholds());
       }
@@ -123,19 +121,12 @@ export function useInventory() {
   const savePeptide = useCallback(async (peptideData) => {
     try {
       const id = peptideData.peptideId || peptideData.id;
+      const existing = await db.peptides.get(id);
 
-      // Check if peptide exists
-      try {
-        await peptidesApi.get(id);
-        // Exists, so update
-        await peptidesApi.update(id, peptideData);
-      } catch (error) {
-        if (error.status === 404) {
-          // Doesn't exist, so create
-          await peptidesApi.create(peptideData);
-        } else {
-          throw error;
-        }
+      if (existing) {
+        await db.peptides.update(id, peptideData);
+      } else {
+        await db.peptides.set(id, peptideData);
       }
 
       await loadPeptides();
@@ -149,7 +140,7 @@ export function useInventory() {
   // Delete peptide
   const deletePeptide = useCallback(async (id) => {
     try {
-      await peptidesApi.delete(id);
+      await db.peptides.delete(id);
       await loadPeptides();
       return { success: true };
     } catch (error) {
@@ -161,10 +152,7 @@ export function useInventory() {
   // Update quantity
   const updateQuantity = useCallback(async (id, quantity) => {
     try {
-      // Get current peptide data
-      const current = await peptidesApi.get(id);
-      // Update with new quantity
-      await peptidesApi.update(id, { ...current, quantity: Number(quantity) });
+      await db.peptides.update(id, { quantity: Number(quantity) });
       await loadPeptides();
       return { success: true };
     } catch (error) {
@@ -173,14 +161,10 @@ export function useInventory() {
     }
   }, [loadPeptides]);
 
-  // Clear all data (WARNING: This will delete all peptides)
+  // Clear all data
   const clearAll = useCallback(async () => {
     try {
-      const allPeptides = await peptidesApi.getAll();
-      // Delete each peptide individually
-      for (const peptide of allPeptides) {
-        await peptidesApi.delete(peptide.peptideId);
-      }
+      await db.peptides.clear();
       await loadPeptides();
       return { success: true };
     } catch (error) {
@@ -189,10 +173,10 @@ export function useInventory() {
     }
   }, [loadPeptides]);
 
-  // Update thresholds (stored in localStorage as UI preference)
+  // Update thresholds
   const updateThresholds = useCallback(async (newThresholds) => {
     try {
-      localStorage.setItem('stockThresholds', JSON.stringify(newThresholds));
+      await db.settings.setStockThresholds(newThresholds);
       setThresholds(newThresholds);
       return { success: true };
     } catch (error) {
@@ -204,9 +188,8 @@ export function useInventory() {
   // Bulk exclude products
   const bulkExclude = useCallback(async (peptideIds) => {
     try {
-      // Add peptide IDs to exclusion list
       const newExclusions = [...new Set([...exclusions, ...peptideIds])];
-      await exclusionsApi.bulkSet(newExclusions);
+      await db.settings.set('exclusions', newExclusions);
       setExclusions(newExclusions);
 
       // Re-filter peptides
@@ -222,7 +205,7 @@ export function useInventory() {
 
   return {
     peptides,
-    allPeptides, // Include all peptides (unfiltered) for exclusion UI
+    allPeptides,
     loading,
     thresholds,
     exclusions,
