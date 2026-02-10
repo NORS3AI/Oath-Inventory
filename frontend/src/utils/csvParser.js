@@ -257,27 +257,47 @@ export function generateSampleCSV() {
 }
 
 /**
- * Export peptides to CSV
+ * Export peptides to CSV with headers that match the import format exactly.
+ * This ensures an exported file can be re-imported without any data loss.
  * @param {array} peptides - Peptides to export
- * @param {array} fields - Fields to include
  * @returns {string} CSV content
  */
-export function exportToCSV(peptides, fields = null) {
-  const defaultFields = [
-    'peptideId',
-    'peptideName',
-    'quantity',
-    'unit',
-    'category',
-    'supplier',
-    'location'
-  ];
+export function exportToCSV(peptides) {
+  // Map internal field names to the CSV headers the importer expects
+  // Uses the FIRST (preferred) header from getDefaultFieldMapping()
+  const fieldToHeader = {
+    peptideId: 'Product',
+    peptideName: 'SKU',
+    quantity: 'Quantity',
+    unit: 'Unit',
+    batchNumber: 'Batch Number',
+    purity: 'Purity',
+    netWeight: 'Size',
+    labeledCount: 'Labeled',
+    orderedDate: 'Incoming Arrival',
+    orderedQty: 'Incoming Qty',
+    velocity: 'Velocity',
+    notes: 'Status',
+    supplier: 'Supplier',
+    location: 'Location',
+  };
 
-  const exportFields = fields || defaultFields;
+  const fields = Object.keys(fieldToHeader);
+  const headers = Object.values(fieldToHeader);
 
-  return Papa.unparse(peptides, {
-    fields: exportFields,
-    header: true
+  // Transform peptide data to use CSV-compatible headers
+  const rows = peptides.map(p => {
+    const row = {};
+    fields.forEach((field, i) => {
+      const value = p[field];
+      row[headers[i]] = value !== undefined && value !== null ? value : '';
+    });
+    return row;
+  });
+
+  return Papa.unparse({
+    fields: headers,
+    data: rows.map(row => headers.map(h => row[h]))
   });
 }
 
