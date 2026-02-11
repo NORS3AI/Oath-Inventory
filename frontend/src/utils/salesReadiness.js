@@ -1,10 +1,9 @@
 /**
  * Sales Readiness Validation
  *
- * Three-point check system:
+ * Two-point check system:
  * 1. Purity must be recorded
  * 2. Net Weight must be recorded
- * 3. Label must be applied
  */
 
 export const READINESS_STATUS = {
@@ -28,13 +27,6 @@ export function checkSalesReadiness(peptide) {
   // Check 2: Net Weight
   if (!peptide.netWeight || peptide.netWeight.trim() === '') {
     missing.push('Net Weight');
-  }
-
-  // Check 3: Label
-  const quantity = Number(peptide.quantity) || 0;
-  const labeledCount = Number(peptide.labeledCount) || (peptide.isLabeled ? quantity : 0);
-  if (quantity > 0 && labeledCount < quantity) {
-    missing.push('Label');
   }
 
   return {
@@ -100,8 +92,7 @@ export function getReadinessStats(peptides) {
     ready: 0,
     blocked: 0,
     missingPurity: 0,
-    missingNetWeight: 0,
-    missingLabel: 0
+    missingNetWeight: 0
   };
 
   peptides.forEach(peptide => {
@@ -114,7 +105,6 @@ export function getReadinessStats(peptides) {
 
       if (readiness.missing.includes('Purity')) stats.missingPurity++;
       if (readiness.missing.includes('Net Weight')) stats.missingNetWeight++;
-      if (readiness.missing.includes('Label')) stats.missingLabel++;
     }
   });
 
