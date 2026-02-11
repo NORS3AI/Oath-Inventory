@@ -924,7 +924,16 @@ ${stats.needsAttention.map(p =>
                       {labelingSort.field === 'remaining' && <span className="text-xs text-blue-600 dark:text-blue-400">{labelingSort.direction === 'asc' ? '\u2191' : '\u2193'}</span>}
                     </div>
                   </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Progress</th>
+                  <th
+                    className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => setLabelingSort({ field: 'progress', direction: labelingSort.field === 'progress' && labelingSort.direction === 'asc' ? 'desc' : 'asc' })}
+                  >
+                    <div className="flex items-center justify-end space-x-2">
+                      <span>Progress</span>
+                      <ArrowUpDown className={`w-4 h-4 ${labelingSort.field === 'progress' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {labelingSort.field === 'progress' && <span className="text-xs text-blue-600 dark:text-blue-400">{labelingSort.direction === 'asc' ? '\u2191' : '\u2193'}</span>}
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -935,7 +944,10 @@ ${stats.needsAttention.map(p =>
                   const aLbl = Number(a.labeledCount) || 0;
                   const bLbl = Number(b.labeledCount) || 0;
 
-                  if (labelingSort.field === 'remaining') {
+                  if (labelingSort.field === 'progress') {
+                    aVal = aQty > 0 ? (aLbl / aQty) * 100 : 0;
+                    bVal = bQty > 0 ? (bLbl / bQty) * 100 : 0;
+                  } else if (labelingSort.field === 'remaining') {
                     aVal = aQty - aLbl;
                     bVal = bQty - bLbl;
                   } else if (labelingSort.field === 'labeledCount') {
