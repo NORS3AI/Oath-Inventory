@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown } from 'lucide-react';
+import { calculateStockStatus } from './utils/stockStatus';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
 import { ToastProvider } from './components/Toast';
@@ -142,7 +143,7 @@ function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'dashboard' && <DashboardView stats={stats} onNavigate={setActiveTab} />}
+            {activeTab === 'dashboard' && <DashboardView stats={stats} peptides={peptides} thresholds={thresholds} onNavigate={setActiveTab} />}
             {activeTab === 'import' && <CSVUpload onImportComplete={handleImportComplete} />}
             {activeTab === 'inventory' && (
               <InventoryView
@@ -199,7 +200,60 @@ function NavButton({ icon, label, active, onClick, badge }) {
   );
 }
 
-function DashboardView({ stats, onNavigate }) {
+function DashboardView({ stats, peptides, thresholds, onNavigate }) {
+  const [selectedStatus, setSelectedStatus] = useState(null);
+  const [detailSort, setDetailSort] = useState({ field: 'peptideId', direction: 'asc' });
+
+  const STATUS_MAP = {
+    OUT_OF_STOCK: { color: 'red', label: 'Out of Stock', action: 'Order Immediately' },
+    NEARLY_OUT: { color: 'orange', label: 'Nearly Out', action: 'Order Urgently' },
+    LOW_STOCK: { color: 'yellow', label: 'Low Stock', action: 'Order Soon' },
+    GOOD_STOCK: { color: 'green', label: 'Good Stock', action: 'No Action Needed' },
+    ON_ORDER: { color: 'teal', label: 'On Order', action: 'Monitor Delivery' }
+  };
+
+  const statusItems = useMemo(() => {
+    if (!selectedStatus) return [];
+    return peptides.filter(p => {
+      const status = calculateStockStatus(p.quantity, thresholds, p.hasActiveOrder);
+      return status === selectedStatus;
+    });
+  }, [peptides, thresholds, selectedStatus]);
+
+  const sortedItems = useMemo(() => {
+    const items = [...statusItems];
+    items.sort((a, b) => {
+      let aVal, bVal;
+      if (detailSort.field === 'quantity') {
+        aVal = Number(a.quantity) || 0;
+        bVal = Number(b.quantity) || 0;
+      } else {
+        aVal = (a.nickname || a[detailSort.field] || '').toLowerCase();
+        bVal = (b.nickname || b[detailSort.field] || '').toLowerCase();
+      }
+      if (aVal < bVal) return detailSort.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return detailSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return items;
+  }, [statusItems, detailSort]);
+
+  const handleStatusClick = (statusKey) => {
+    if (selectedStatus === statusKey) {
+      setSelectedStatus(null);
+    } else {
+      setSelectedStatus(statusKey);
+      setDetailSort({ field: 'peptideId', direction: 'asc' });
+    }
+  };
+
+  const handleDetailSort = (field) => {
+    setDetailSort(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -216,33 +270,114 @@ function DashboardView({ stats, onNavigate }) {
             label="Out of Stock"
             action="Order Immediately"
             count={stats.outOfStock}
+            active={selectedStatus === 'OUT_OF_STOCK'}
+            onClick={() => handleStatusClick('OUT_OF_STOCK')}
           />
           <StatusCard
             color="orange"
             label="Nearly Out"
             action="Order Urgently"
             count={stats.nearlyOut}
+            active={selectedStatus === 'NEARLY_OUT'}
+            onClick={() => handleStatusClick('NEARLY_OUT')}
           />
           <StatusCard
             color="yellow"
             label="Low Stock"
             action="Order Soon"
             count={stats.lowStock}
+            active={selectedStatus === 'LOW_STOCK'}
+            onClick={() => handleStatusClick('LOW_STOCK')}
           />
           <StatusCard
             color="green"
             label="Good Stock"
             action="No Action Needed"
             count={stats.goodStock}
+            active={selectedStatus === 'GOOD_STOCK'}
+            onClick={() => handleStatusClick('GOOD_STOCK')}
           />
           <StatusCard
             color="teal"
             label="On Order"
             action="Monitor Delivery"
             count={stats.onOrder}
+            active={selectedStatus === 'ON_ORDER'}
+            onClick={() => handleStatusClick('ON_ORDER')}
           />
         </div>
       </div>
+
+      {/* Status Detail Table */}
+      {selectedStatus && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSelectedStatus(null)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              </button>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {STATUS_MAP[selectedStatus].label} ({sortedItems.length})
+              </h3>
+            </div>
+          </div>
+          {sortedItems.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No items in this category</p>
+          ) : (
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                  <tr>
+                    <th
+                      className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      onClick={() => handleDetailSort('peptideId')}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span>Product</span>
+                        <ArrowUpDown className={`w-4 h-4 ${detailSort.field === 'peptideId' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                        {detailSort.field === 'peptideId' && <span className="text-xs text-blue-600 dark:text-blue-400">{detailSort.direction === 'asc' ? '\u2191' : '\u2193'}</span>}
+                      </div>
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">SKU</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Batch</th>
+                    <th
+                      className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      onClick={() => handleDetailSort('quantity')}
+                    >
+                      <div className="flex items-center justify-end space-x-2">
+                        <span>Quantity</span>
+                        <ArrowUpDown className={`w-4 h-4 ${detailSort.field === 'quantity' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                        {detailSort.field === 'quantity' && <span className="text-xs text-blue-600 dark:text-blue-400">{detailSort.direction === 'asc' ? '\u2191' : '\u2193'}</span>}
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {sortedItems.map(item => (
+                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">
+                        {item.nickname || item.peptideId}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                        {item.nickname ? item.peptideId : (item.peptideName || '-')}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                        {item.batchNumber || '-'}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-right font-medium text-gray-900 dark:text-white">
+                        {item.quantity}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -374,7 +509,7 @@ function ReportsView({ peptides, orders, thresholds }) {
   );
 }
 
-function StatusCard({ color, label, action, count }) {
+function StatusCard({ color, label, action, count, active, onClick }) {
   const colors = {
     red: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800',
     orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-800',
@@ -384,7 +519,10 @@ function StatusCard({ color, label, action, count }) {
   };
 
   return (
-    <div className={`p-4 rounded-lg border ${colors[color]}`}>
+    <div
+      onClick={onClick}
+      className={`p-4 rounded-lg border cursor-pointer transition-all hover:scale-105 ${colors[color]} ${active ? 'ring-2 ring-blue-500 dark:ring-blue-400 shadow-lg' : ''}`}
+    >
       <div className="text-2xl font-bold">{count}</div>
       <div className="font-semibold mt-1">{label}</div>
       <div className="text-sm mt-1 opacity-80">{action}</div>
