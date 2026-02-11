@@ -236,6 +236,7 @@ export default function BulkEditModal({ isOpen, onClose, peptides, onSave }) {
                           type={col.type}
                           value={peptide[col.id] ?? ''}
                           onChange={(e) => handleChange(rowIndex, col.id, e.target.value)}
+                          onFocus={(e) => e.target.select()}
                           className={`${col.width || 'w-full'} px-2 py-1 text-sm border rounded
                             ${isModified(rowIndex, col.id)
                               ? 'border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-gray-900 dark:text-white'
