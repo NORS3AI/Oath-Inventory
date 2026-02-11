@@ -839,12 +839,7 @@ ${stats.needsAttention.map(p =>
                 }).map(item => (
                   <tr key={item.id}>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">
-                      <div>{item.peptideId}</div>
-                      {item.nickname ? (
-                        <div className="text-xs text-gray-400 dark:text-gray-500 font-normal">{item.nickname}</div>
-                      ) : item.peptideName ? (
-                        <div className="text-xs text-gray-400 dark:text-gray-500 font-normal">{item.peptideName}</div>
-                      ) : null}
+                      {item.nickname || item.peptideId}
                     </td>
                     <td className="px-4 py-2">
                       <StatusBadge status={item.status} />
@@ -953,12 +948,7 @@ ${stats.needsAttention.map(p =>
                 }).map(item => (
                   <tr key={item.id}>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">
-                      <div>{item.peptideId}</div>
-                      {item.nickname ? (
-                        <div className="text-xs text-gray-400 dark:text-gray-500 font-normal">{item.nickname}</div>
-                      ) : item.peptideName ? (
-                        <div className="text-xs text-gray-400 dark:text-gray-500 font-normal">{item.peptideName}</div>
-                      ) : null}
+                      {item.nickname || item.peptideId}
                     </td>
                     <td className="px-4 py-2 text-sm text-red-600 dark:text-red-400">
                       {item.readiness.missing.join(', ')}

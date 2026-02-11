@@ -263,16 +263,17 @@ export default function SalesReady({ peptides }) {
       );
     }
 
-    // Show nickname under product ID; hide product name when nickname is set
+    // Product column: show nickname INSTEAD of product ID when set
     if (column.id === 'peptideId') {
+      if (peptide.nickname) {
+        return peptide.nickname;
+      }
       return (
         <div>
           <div>{peptide.peptideId}</div>
-          {peptide.nickname ? (
-            <div className="text-xs text-gray-400 dark:text-gray-500">{peptide.nickname}</div>
-          ) : peptide.peptideName ? (
+          {peptide.peptideName && (
             <div className="text-xs text-gray-400 dark:text-gray-500">{peptide.peptideName}</div>
-          ) : null}
+          )}
         </div>
       );
     }
