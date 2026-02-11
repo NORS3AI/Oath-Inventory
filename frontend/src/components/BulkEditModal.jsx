@@ -220,12 +220,13 @@ export default function BulkEditModal({ isOpen, onClose, peptides, onSave }) {
                           onChange={(e) => handleChange(rowIndex, col.id, e.target.value)}
                           className={`${col.width || 'w-full'} px-2 py-1 text-sm border rounded
                             ${isModified(rowIndex, col.id)
-                              ? 'border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                              : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700'
+                              ? 'border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-gray-900 dark:text-white'
+                              : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white'
                             }
-                            text-gray-900 dark:text-white
                             focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+                            placeholder-gray-400 dark:placeholder-gray-500
                           `}
+                          placeholder={col.label}
                         />
                       )}
                     </td>
