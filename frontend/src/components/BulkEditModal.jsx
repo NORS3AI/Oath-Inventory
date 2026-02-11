@@ -8,11 +8,12 @@ export default function BulkEditModal({ isOpen, onClose, peptides, onSave }) {
   const [modified, setModified] = useState(new Set());
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState(null);
+  const [hiddenColumns, setHiddenColumns] = useState([]);
   const modalRef = useRef(null);
   const { success, error: showError } = useToast();
 
-  // Editable columns
-  const columns = [
+  // All editable columns
+  const allColumns = [
     { id: 'peptideId', label: 'Product', type: 'text', readOnly: true },
     { id: 'peptideName', label: 'SKU', type: 'text', width: 'w-48' },
     { id: 'nickname', label: 'Nickname', type: 'text', width: 'w-40' },
@@ -25,6 +26,23 @@ export default function BulkEditModal({ isOpen, onClose, peptides, onSave }) {
     { id: 'orderedQty', label: 'Ordered', type: 'number', width: 'w-20' },
     { id: 'notes', label: 'Notes', type: 'text', width: 'w-48' },
   ];
+
+  // Filter out hidden columns (always keep peptideId as the row identifier)
+  const columns = allColumns.filter(
+    col => col.id === 'peptideId' || !hiddenColumns.includes(col.id)
+  );
+
+  // Load hidden columns setting from database
+  useEffect(() => {
+    if (!isOpen) return;
+    const loadHidden = async () => {
+      const saved = await db.settings.get('hiddenColumns');
+      if (saved && Array.isArray(saved)) {
+        setHiddenColumns(saved);
+      }
+    };
+    loadHidden();
+  }, [isOpen]);
 
   // Initialize edit data from peptides
   useEffect(() => {
@@ -63,8 +81,8 @@ export default function BulkEditModal({ isOpen, onClose, peptides, onSave }) {
 
     try {
       for (let i = 0; i < editData.length; i++) {
-        // Check if this row has any modifications
-        const rowModified = columns.some(col => modified.has(`${i}-${col.id}`));
+        // Check if this row has any modifications (check all columns, not just visible)
+        const rowModified = allColumns.some(col => modified.has(`${i}-${col.id}`));
         if (!rowModified) continue;
 
         const peptide = editData[i];
@@ -73,7 +91,7 @@ export default function BulkEditModal({ isOpen, onClose, peptides, onSave }) {
         try {
           // Build update object with only changed fields
           const updates = {};
-          columns.forEach(col => {
+          allColumns.forEach(col => {
             if (col.readOnly) return;
             if (modified.has(`${i}-${col.id}`)) {
               let value = peptide[col.id];
