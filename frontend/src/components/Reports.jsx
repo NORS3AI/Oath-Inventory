@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Download, TrendingUp, Clock, Package, CheckCircle, AlertTriangle, FileText, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon, AreaChart as AreaChartIcon, ArrowUpDown } from 'lucide-react';
+import { Download, TrendingUp, Clock, Package, CheckCircle, AlertTriangle, FileText, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon, AreaChart as AreaChartIcon, ArrowUpDown, Tag } from 'lucide-react';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { calculateStockStatus } from '../utils/stockStatus';
 import { checkSalesReadiness } from '../utils/salesReadiness';
@@ -13,6 +13,7 @@ export default function Reports({ peptides, orders = [], thresholds }) {
   const [timeRange, setTimeRange] = useState(30); // days to show
   const [lowStockSort, setLowStockSort] = useState({ field: 'peptideId', direction: 'asc' });
   const [missingReqSort, setMissingReqSort] = useState({ field: 'peptideId', direction: 'asc' });
+  const [labelingSort, setLabelingSort] = useState({ field: 'labeledCount', direction: 'asc' });
 
   // Custom tooltip style for charts with semi-transparent background and bright text
   const tooltipStyle = {
@@ -140,6 +141,16 @@ export default function Reports({ peptides, orders = [], thresholds }) {
       }
     }
 
+    // Items needing labeling: has stock but not fully labeled, sorted by lowest labeled count
+    const needsLabeling = peptidesWithStatus
+      .filter(p => {
+        const qty = Number(p.quantity) || 0;
+        const lbl = Number(p.labeledCount) || 0;
+        return qty > 0 && lbl < qty;
+      })
+      .sort((a, b) => (Number(a.labeledCount) || 0) - (Number(b.labeledCount) || 0))
+      .slice(0, 100);
+
     return {
       total: peptides.length,
       statusCounts,
@@ -148,6 +159,7 @@ export default function Reports({ peptides, orders = [], thresholds }) {
       salesReadyCount,
       salesReadyPercent: peptides.length > 0 ? Math.round((salesReadyCount / peptides.length) * 100) : 0,
       needsAttention: needsAttention.slice(0, 10), // Top 10
+      needsLabeling,
       avgOrderToDelivery,
       avgTestingTurnaround,
       activeOrders: orders.filter(o => !o.dateResultsReceived).length,
@@ -849,6 +861,125 @@ ${stats.needsAttention.map(p =>
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Needs Labeling - Top 100 */}
+      {stats.needsLabeling.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors">
+          <div className="flex items-center gap-2 mb-4">
+            <Tag className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Needs Labeling ({stats.needsLabeling.length})
+            </h3>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Top 100 products needing labels, sorted by lowest labeled count first.
+          </p>
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-8">#</th>
+                  <th
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => setLabelingSort({ field: 'peptideId', direction: labelingSort.field === 'peptideId' && labelingSort.direction === 'asc' ? 'desc' : 'asc' })}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>Product</span>
+                      <ArrowUpDown className={`w-4 h-4 ${labelingSort.field === 'peptideId' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {labelingSort.field === 'peptideId' && <span className="text-xs text-blue-600 dark:text-blue-400">{labelingSort.direction === 'asc' ? '\u2191' : '\u2193'}</span>}
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => setLabelingSort({ field: 'quantity', direction: labelingSort.field === 'quantity' && labelingSort.direction === 'asc' ? 'desc' : 'asc' })}
+                  >
+                    <div className="flex items-center justify-end space-x-2">
+                      <span>Qty</span>
+                      <ArrowUpDown className={`w-4 h-4 ${labelingSort.field === 'quantity' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {labelingSort.field === 'quantity' && <span className="text-xs text-blue-600 dark:text-blue-400">{labelingSort.direction === 'asc' ? '\u2191' : '\u2193'}</span>}
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => setLabelingSort({ field: 'labeledCount', direction: labelingSort.field === 'labeledCount' && labelingSort.direction === 'asc' ? 'desc' : 'asc' })}
+                  >
+                    <div className="flex items-center justify-end space-x-2">
+                      <span>Labeled</span>
+                      <ArrowUpDown className={`w-4 h-4 ${labelingSort.field === 'labeledCount' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {labelingSort.field === 'labeledCount' && <span className="text-xs text-blue-600 dark:text-blue-400">{labelingSort.direction === 'asc' ? '\u2191' : '\u2193'}</span>}
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onClick={() => setLabelingSort({ field: 'remaining', direction: labelingSort.field === 'remaining' && labelingSort.direction === 'asc' ? 'desc' : 'asc' })}
+                  >
+                    <div className="flex items-center justify-end space-x-2">
+                      <span>Remaining</span>
+                      <ArrowUpDown className={`w-4 h-4 ${labelingSort.field === 'remaining' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                      {labelingSort.field === 'remaining' && <span className="text-xs text-blue-600 dark:text-blue-400">{labelingSort.direction === 'asc' ? '\u2191' : '\u2193'}</span>}
+                    </div>
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Progress</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {[...stats.needsLabeling].sort((a, b) => {
+                  let aVal, bVal;
+                  const aQty = Number(a.quantity) || 0;
+                  const bQty = Number(b.quantity) || 0;
+                  const aLbl = Number(a.labeledCount) || 0;
+                  const bLbl = Number(b.labeledCount) || 0;
+
+                  if (labelingSort.field === 'remaining') {
+                    aVal = aQty - aLbl;
+                    bVal = bQty - bLbl;
+                  } else if (labelingSort.field === 'labeledCount') {
+                    aVal = aLbl;
+                    bVal = bLbl;
+                  } else if (labelingSort.field === 'quantity') {
+                    aVal = aQty;
+                    bVal = bQty;
+                  } else {
+                    aVal = (a.nickname || a.peptideId || '').toLowerCase();
+                    bVal = (b.nickname || b.peptideId || '').toLowerCase();
+                  }
+
+                  if (aVal < bVal) return labelingSort.direction === 'asc' ? -1 : 1;
+                  if (aVal > bVal) return labelingSort.direction === 'asc' ? 1 : -1;
+                  return 0;
+                }).map((item, index) => {
+                  const qty = Number(item.quantity) || 0;
+                  const lbl = Number(item.labeledCount) || 0;
+                  const remaining = qty - lbl;
+                  const pct = qty > 0 ? Math.round((lbl / qty) * 100) : 0;
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">{index + 1}</td>
+                      <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">
+                        {item.nickname || item.peptideId}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">{qty}</td>
+                      <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">{lbl}</td>
+                      <td className="px-4 py-2 text-sm text-right font-medium text-orange-600 dark:text-orange-400">{remaining}</td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full ${pct === 0 ? 'bg-red-500' : pct < 50 ? 'bg-orange-500' : 'bg-yellow-500'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-10 text-right">{pct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
