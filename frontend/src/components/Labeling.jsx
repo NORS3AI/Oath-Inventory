@@ -1,17 +1,32 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Tag, CheckCircle2, AlertCircle, Package, Calendar, TrendingUp, Search, Download } from 'lucide-react';
+import { Tag, CheckCircle2, AlertCircle, Package, Calendar, TrendingUp, Search, Download, ArrowUpDown, List } from 'lucide-react';
 import { db } from '../lib/db';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
 import { useToast } from './Toast';
+import ColumnReorderModal from './ColumnReorderModal';
+
+// Define all available columns for the labeling table
+const DEFAULT_COLUMNS = [
+  { id: 'product', label: 'Product', field: 'peptideId', sortable: true },
+  { id: 'batchNumber', label: 'Batch', field: 'batchNumber', sortable: true },
+  { id: 'quantity', label: 'Quantity', field: 'quantity', sortable: true },
+  { id: 'labeled', label: 'Labeled', field: 'labeledCount', sortable: true },
+  { id: 'status', label: 'Status', field: 'status', sortable: true },
+  { id: 'actions', label: 'Actions', field: 'actions', sortable: false }
+];
 
 export default function Labeling({ peptides, onRefresh }) {
   const [labeledItems, setLabeledItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState(() => {
-    // Restore search term from localStorage
     return localStorage.getItem('labeling-searchTerm') || '';
   });
-  const [filterView, setFilterView] = useState('all'); // all, labeled, unlabeled, partial
+  const [filterView, setFilterView] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState('peptideId');
+  const [sortDirection, setSortDirection] = useState('asc');
+  const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
+  const [hiddenColumns, setHiddenColumns] = useState([]);
+  const [showReorderModal, setShowReorderModal] = useState(false);
   const { success, error: showError } = useToast();
 
   // Persist search term to localStorage
@@ -22,13 +37,55 @@ export default function Labeling({ peptides, onRefresh }) {
   // Clear search term when component unmounts (tab change)
   useEffect(() => {
     return () => {
-      // Only clear if user is navigating away, not just re-rendering
       const currentTab = localStorage.getItem('activeTab');
       if (currentTab !== 'labeling') {
         localStorage.setItem('labeling-searchTerm', '');
       }
     };
   }, []);
+
+  // Load column settings from database
+  useEffect(() => {
+    const loadColumnSettings = async () => {
+      const savedOrder = await db.settings.get('labelingColumnOrder');
+      if (savedOrder && Array.isArray(savedOrder)) {
+        const orderedColumns = savedOrder
+          .map(id => DEFAULT_COLUMNS.find(col => col.id === id))
+          .filter(Boolean);
+        const newColumns = DEFAULT_COLUMNS.filter(
+          col => !savedOrder.includes(col.id)
+        );
+        setColumnOrder([...orderedColumns, ...newColumns]);
+      }
+
+      const savedHidden = await db.settings.get('labelingHiddenColumns');
+      if (savedHidden && Array.isArray(savedHidden)) {
+        setHiddenColumns(savedHidden);
+      }
+    };
+    loadColumnSettings();
+  }, []);
+
+  // Save column order
+  const saveColumnOrder = async (newOrder) => {
+    const orderIds = newOrder.map(col => col.id);
+    await db.settings.set('labelingColumnOrder', orderIds);
+  };
+
+  const handleColumnReorder = (newOrder) => {
+    setColumnOrder(newOrder);
+    saveColumnOrder(newOrder);
+  };
+
+  const handleVisibilityChange = async (hidden) => {
+    setHiddenColumns(hidden);
+    await db.settings.set('labelingHiddenColumns', hidden);
+  };
+
+  // Get visible columns
+  const visibleColumns = useMemo(() => {
+    return columnOrder.filter(col => !hiddenColumns.includes(col.id));
+  }, [columnOrder, hiddenColumns]);
 
   // Load labeled items from database
   useEffect(() => {
@@ -62,7 +119,6 @@ export default function Labeling({ peptides, onRefresh }) {
       const labeledCount = Number(peptide.labeledCount) || 0;
       const receivedDate = peptide.receivedDate ? new Date(peptide.receivedDate).getTime() : null;
 
-      // Check if it's a new product (received in last 7 days)
       if (receivedDate && receivedDate > sevenDaysAgo) {
         newProducts.push({
           ...peptide,
@@ -70,7 +126,6 @@ export default function Labeling({ peptides, onRefresh }) {
         });
       }
 
-      // Categorize by labeling status
       if (labeledCount === 0 && quantity > 0) {
         unlabeled.push(peptide);
       } else if (labeledCount >= quantity) {
@@ -135,13 +190,67 @@ export default function Labeling({ peptides, onRefresh }) {
     );
   }, [peptides, stats, filterView, searchTerm]);
 
+  // Sort
+  const sortedPeptides = useMemo(() => {
+    const sorted = [...filteredPeptides];
+    sorted.sort((a, b) => {
+      let aVal, bVal;
+
+      if (sortField === 'status') {
+        const aQty = Number(a.quantity) || 0;
+        const aLabeled = Number(a.labeledCount) || 0;
+        const bQty = Number(b.quantity) || 0;
+        const bLabeled = Number(b.labeledCount) || 0;
+        // Priority: No Stock=0, Unlabeled=1, Partial=2, Complete=3
+        const getStatusPriority = (qty, lbl) => {
+          if (qty === 0) return 0;
+          if (lbl === 0) return 1;
+          if (lbl >= qty) return 3;
+          return 2;
+        };
+        aVal = getStatusPriority(aQty, aLabeled);
+        bVal = getStatusPriority(bQty, bLabeled);
+      } else if (sortField === 'labeledCount') {
+        // Sort by labeling percentage
+        const aQty = Number(a.quantity) || 1;
+        const bQty = Number(b.quantity) || 1;
+        aVal = ((Number(a.labeledCount) || 0) / aQty) * 100;
+        bVal = ((Number(b.labeledCount) || 0) / bQty) * 100;
+      } else if (sortField === 'quantity') {
+        aVal = Number(a.quantity) || 0;
+        bVal = Number(b.quantity) || 0;
+      } else {
+        aVal = a[sortField];
+        bVal = b[sortField];
+      }
+
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+      if (aVal === undefined || aVal === null || aVal === '') aVal = '';
+      if (bVal === undefined || bVal === null || bVal === '') bVal = '';
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredPeptides, sortField, sortDirection]);
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   // Mark items as labeled
   const handleMarkLabeled = async (peptide, count) => {
     try {
       const labeledCount = (Number(peptide.labeledCount) || 0) + count;
       await db.peptides.update(peptide.id, { labeledCount });
 
-      // Record in label tracking
       await db.labels.markLabeled(peptide.peptideId, peptide.batchNumber, {
         quantity: count,
         labeledBy: 'User',
@@ -162,16 +271,12 @@ export default function Labeling({ peptides, onRefresh }) {
       const quantity = Number(p.quantity) || 0;
       const labeledCount = Number(p.labeledCount) || 0;
 
-      // Calculate off books
       let offBooks;
       if (quantity === 0 && labeledCount > 0) {
-        // No official stock but items are labeled - all labeled items are off books
         offBooks = labeledCount;
       } else if (quantity < 0) {
-        // Negative quantity (backorder) - subtract absolute value from labeled
         offBooks = Math.max(0, labeledCount - Math.abs(quantity));
       } else {
-        // Positive quantity - normal calculation
         offBooks = Math.max(0, labeledCount - quantity);
       }
 
@@ -324,6 +429,15 @@ export default function Labeling({ peptides, onRefresh }) {
             />
           </div>
 
+          {/* Reorder Columns Button */}
+          <button
+            onClick={() => setShowReorderModal(true)}
+            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <List className="w-4 h-4" />
+            <span className="hidden sm:inline">Reorder</span>
+          </button>
+
           {/* Export Button */}
           <button
             onClick={handleExportReport}
@@ -341,39 +455,47 @@ export default function Labeling({ peptides, onRefresh }) {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Batch
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Quantity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Labeled
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
+                {visibleColumns.map((column) => (
+                  <th
+                    key={column.id}
+                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider
+                      ${column.sortable ? 'hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer' : ''}
+                    `}
+                    onClick={() => column.sortable && handleSort(column.field)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>{column.label}</span>
+                      {column.sortable && (
+                        <>
+                          <ArrowUpDown
+                            className={`w-4 h-4 ${sortField === column.field ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}
+                          />
+                          {sortField === column.field && (
+                            <span className="text-xs text-blue-600 dark:text-blue-400">
+                              {sortDirection === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredPeptides.length === 0 ? (
+              {sortedPeptides.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={visibleColumns.length} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                     {searchTerm ? 'No products found matching your search' : 'No products to display'}
                   </td>
                 </tr>
               ) : (
-                filteredPeptides.map((peptide) => (
+                sortedPeptides.map((peptide) => (
                   <ProductRow
                     key={peptide.id}
                     peptide={peptide}
                     onMarkLabeled={handleMarkLabeled}
+                    visibleColumns={visibleColumns}
                   />
                 ))
               )}
@@ -381,6 +503,17 @@ export default function Labeling({ peptides, onRefresh }) {
           </table>
         </div>
       </div>
+
+      {/* Column Reorder Modal */}
+      {showReorderModal && (
+        <ColumnReorderModal
+          columns={columnOrder}
+          hiddenColumns={hiddenColumns}
+          onReorder={handleColumnReorder}
+          onVisibilityChange={handleVisibilityChange}
+          onClose={() => setShowReorderModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -433,7 +566,7 @@ function FilterButton({ active, onClick, label, count, color = 'gray' }) {
   );
 }
 
-function ProductRow({ peptide, onMarkLabeled }) {
+function ProductRow({ peptide, onMarkLabeled, visibleColumns }) {
   const [quickLabel, setQuickLabel] = useState(false);
   const [labelCount, setLabelCount] = useState(1);
 
@@ -468,77 +601,91 @@ function ProductRow({ peptide, onMarkLabeled }) {
     }
   };
 
+  const renderCell = (column) => {
+    switch (column.id) {
+      case 'product':
+        return (
+          <div>
+            {peptide.nickname ? (
+              <div className="font-medium text-gray-900 dark:text-white">{peptide.nickname}</div>
+            ) : (
+              <>
+                <div className="font-medium text-gray-900 dark:text-white">{peptide.peptideId}</div>
+                {peptide.peptideName && (
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{peptide.peptideName}</div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      case 'batchNumber':
+        return <span className="text-sm text-gray-900 dark:text-white">{peptide.batchNumber || '-'}</span>;
+      case 'quantity':
+        return <span className="text-sm text-gray-900 dark:text-white font-medium">{quantity}</span>;
+      case 'labeled':
+        return (
+          <div className="text-sm">
+            <div className="font-medium text-gray-900 dark:text-white">{labeledCount}</div>
+            {remaining > 0 && (
+              <div className="text-xs text-orange-600 dark:text-orange-400">{remaining} remaining</div>
+            )}
+          </div>
+        );
+      case 'status':
+        return getStatusBadge();
+      case 'actions':
+        return (
+          <>
+            {remaining > 0 && !quickLabel && (
+              <button
+                onClick={() => setQuickLabel(true)}
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm"
+              >
+                Mark Labeled
+              </button>
+            )}
+            {quickLabel && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max={remaining}
+                  value={labelCount}
+                  onChange={(e) => setLabelCount(Number(e.target.value))}
+                  className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  autoFocus
+                />
+                <button
+                  onClick={handleQuickLabel}
+                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setQuickLabel(false);
+                    setLabelCount(1);
+                  }}
+                  className="px-3 py-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 text-sm rounded"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
+        );
+      default:
+        return '-';
+    }
+  };
+
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-      <td className="px-6 py-4">
-        <div>
-          {peptide.nickname ? (
-            <div className="font-medium text-gray-900 dark:text-white">{peptide.nickname}</div>
-          ) : (
-            <>
-              <div className="font-medium text-gray-900 dark:text-white">{peptide.peptideId}</div>
-              {peptide.peptideName && (
-                <div className="text-sm text-gray-500 dark:text-gray-400">{peptide.peptideName}</div>
-              )}
-            </>
-          )}
-        </div>
-      </td>
-      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-        {peptide.batchNumber || '-'}
-      </td>
-      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
-        {quantity}
-      </td>
-      <td className="px-6 py-4">
-        <div className="text-sm">
-          <div className="font-medium text-gray-900 dark:text-white">{labeledCount}</div>
-          {remaining > 0 && (
-            <div className="text-xs text-orange-600 dark:text-orange-400">{remaining} remaining</div>
-          )}
-        </div>
-      </td>
-      <td className="px-6 py-4">
-        {getStatusBadge()}
-      </td>
-      <td className="px-6 py-4">
-        {remaining > 0 && !quickLabel && (
-          <button
-            onClick={() => setQuickLabel(true)}
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm"
-          >
-            Mark Labeled
-          </button>
-        )}
-        {quickLabel && (
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min="1"
-              max={remaining}
-              value={labelCount}
-              onChange={(e) => setLabelCount(Number(e.target.value))}
-              className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              autoFocus
-            />
-            <button
-              onClick={handleQuickLabel}
-              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => {
-                setQuickLabel(false);
-                setLabelCount(1);
-              }}
-              className="px-3 py-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 text-sm rounded"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-      </td>
+      {visibleColumns.map((column) => (
+        <td key={column.id} className="px-6 py-4">
+          {renderCell(column)}
+        </td>
+      ))}
     </tr>
   );
 }
