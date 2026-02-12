@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown } from 'lucide-react';
+import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown, GitCompareArrows } from 'lucide-react';
 import { calculateStockStatus } from './utils/stockStatus';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
@@ -10,6 +10,7 @@ import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
 import Reports from './components/Reports';
 import Labeling from './components/Labeling';
+import Compare from './components/Compare';
 import SettingsModal from './components/SettingsModal';
 import packageJson from '../package.json';
 
@@ -44,6 +45,13 @@ function App() {
     };
     loadOrders();
   }, [peptides]); // Reload when peptides change
+
+  // Auto-save daily snapshot
+  useEffect(() => {
+    if (peptides.length > 0) {
+      db.snapshots.saveDailyIfNeeded(peptides);
+    }
+  }, [peptides]);
 
   const handleImportComplete = () => {
     refresh();
@@ -125,6 +133,12 @@ function App() {
               onClick={() => setActiveTab('reports')}
             />
             <NavButton
+              icon={<GitCompareArrows className="w-5 h-5" />}
+              label="Compare"
+              active={activeTab === 'compare'}
+              onClick={() => setActiveTab('compare')}
+            />
+            <NavButton
               icon={<Upload className="w-5 h-5" />}
               label="Import CSV"
               active={activeTab === 'import'}
@@ -157,6 +171,7 @@ function App() {
             {activeTab === 'labeling' && <LabelingView peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
             {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
+            {activeTab === 'compare' && <CompareView peptides={peptides} />}
           </>
         )}
       </main>
@@ -505,6 +520,18 @@ function ReportsView({ peptides, orders, thresholds }) {
         <p className="text-gray-600 dark:text-gray-400 mt-1">Comprehensive inventory analysis and exports</p>
       </div>
       <Reports peptides={peptides} orders={orders} thresholds={thresholds} />
+    </div>
+  );
+}
+
+function CompareView({ peptides }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Compare Inventory</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Track changes between snapshots to see what was ordered</p>
+      </div>
+      <Compare peptides={peptides} />
     </div>
   );
 }

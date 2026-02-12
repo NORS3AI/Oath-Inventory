@@ -37,6 +37,12 @@ const velocityHistoryStore = localforage.createInstance({
   description: 'Historical velocity data for trend tracking'
 });
 
+const snapshotStore = localforage.createInstance({
+  name: 'OathInventory',
+  storeName: 'snapshots',
+  description: 'Daily inventory snapshots for comparison'
+});
+
 /**
  * Database service for Oath Inventory System
  * Uses IndexedDB via localforage for client-side data persistence
@@ -413,6 +419,63 @@ export const db = {
     }
   },
 
+  // Snapshot operations (for inventory comparison)
+  snapshots: {
+    async save(peptides, label = '') {
+      const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const id = label || date;
+      const snapshot = {
+        id,
+        date,
+        timestamp: new Date().toISOString(),
+        label: label || date,
+        itemCount: peptides.length,
+        items: peptides.map(p => ({
+          peptideId: p.peptideId,
+          peptideName: p.peptideName || '',
+          nickname: p.nickname || '',
+          batchNumber: p.batchNumber || '',
+          quantity: Number(p.quantity) || 0,
+          labeledCount: Number(p.labeledCount) || 0,
+          purity: p.purity || '',
+          netWeight: p.netWeight || ''
+        }))
+      };
+      await snapshotStore.setItem(id, snapshot);
+      return snapshot;
+    },
+
+    async getAll() {
+      const snapshots = [];
+      await snapshotStore.iterate((value) => {
+        snapshots.push({ id: value.id, date: value.date, timestamp: value.timestamp, label: value.label, itemCount: value.itemCount });
+      });
+      return snapshots.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    },
+
+    async get(id) {
+      return await snapshotStore.getItem(id);
+    },
+
+    async delete(id) {
+      return await snapshotStore.removeItem(id);
+    },
+
+    async saveDailyIfNeeded(peptides) {
+      const today = new Date().toISOString().split('T')[0];
+      const existing = await snapshotStore.getItem(today);
+      if (!existing && peptides.length > 0) {
+        await this.save(peptides, today);
+        return true;
+      }
+      return false;
+    },
+
+    async clear() {
+      return await snapshotStore.clear();
+    }
+  },
+
   // Utility operations
   async clearAll() {
     await peptideStore.clear();
@@ -421,6 +484,7 @@ export const db = {
     await settingsStore.clear();
     await transactionStore.clear();
     await velocityHistoryStore.clear();
+    await snapshotStore.clear();
   },
 
   async exportData() {
