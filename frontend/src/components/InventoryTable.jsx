@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Search, ArrowUpDown, Package, Download, GripVertical, MoreVertical, List, Ban, TrendingDown, Save, X, Plus, Edit3 } from 'lucide-react';
 import { calculateStockStatus, getStatusConfig } from '../utils/stockStatus';
 import { exportToCSV, downloadCSV } from '../utils/csvParser';
@@ -262,6 +262,17 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
     downloadCSV(csvContent, `oath-inventory-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  // Inline labeled count save
+  const handleInlineLabeledSave = useCallback(async (peptideId, newCount) => {
+    try {
+      await db.peptides.update(peptideId, { labeledCount: newCount });
+      handleRefreshWithScrollPreservation();
+    } catch (err) {
+      console.error('Failed to update labeled count:', err);
+      showError('Failed to save labeled count');
+    }
+  }, [handleRefreshWithScrollPreservation, showError]);
+
   // Toggle exclude mode
   const handleToggleExcludeMode = () => {
     if (excludeMode) {
@@ -368,47 +379,11 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
     }
 
     if (column.id === 'labeledCount') {
-      const quantity = Number(peptide.quantity) || 0;
-
-      // Parse labeledCount, handling various data types
-      let labeledCount = 0;
-      if (typeof peptide.labeledCount === 'number') {
-        labeledCount = peptide.labeledCount;
-      } else if (typeof peptide.labeledCount === 'string') {
-        // Handle string numbers
-        const parsed = Number(peptide.labeledCount);
-        if (!isNaN(parsed)) {
-          labeledCount = parsed;
-        } else {
-          // If it's a non-numeric string (like "yes"/"no"), treat as 0
-          labeledCount = 0;
-        }
-      } else if (peptide.isLabeled) {
-        // Fallback to isLabeled boolean
-        labeledCount = quantity;
-      }
-
-      const percentage = quantity > 0 ? Math.round((labeledCount / quantity) * 100) : 0;
-
-      // Color coding based on percentage labeled
-      let colorClass = '';
-      if (quantity <= 0) {
-        // No stock or backorder - show gray/neutral
-        colorClass = 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-      } else if (percentage <= 25) {
-        colorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'; // 0-25%
-      } else if (percentage <= 50) {
-        colorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'; // 26-50%
-      } else if (percentage <= 75) {
-        colorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'; // 51-75%
-      } else {
-        colorClass = 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200'; // 76-100%
-      }
-
       return (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-          {labeledCount} / {quantity} ({percentage}%)
-        </span>
+        <InlineLabeledInput
+          peptide={peptide}
+          onSave={handleInlineLabeledSave}
+        />
       );
     }
 
@@ -702,6 +677,7 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
                   {visibleColumns.map((column) => (
                     <td
                       key={column.id}
+                      onClick={column.id === 'labeledCount' ? (e) => e.stopPropagation() : undefined}
                       className={`px-6 py-4 text-sm ${
                         column.id === 'peptideId' ? 'font-medium text-gray-900 dark:text-white' :
                         column.id === 'status' ? '' :
@@ -784,6 +760,79 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
         peptides={sortedPeptides}
         onSave={handleRefreshWithScrollPreservation}
       />
+    </div>
+  );
+}
+
+function InlineLabeledInput({ peptide, onSave }) {
+  const quantity = Number(peptide.quantity) || 0;
+
+  let labeledCount = 0;
+  if (typeof peptide.labeledCount === 'number') {
+    labeledCount = peptide.labeledCount;
+  } else if (typeof peptide.labeledCount === 'string') {
+    const parsed = Number(peptide.labeledCount);
+    if (!isNaN(parsed)) labeledCount = parsed;
+  } else if (peptide.isLabeled) {
+    labeledCount = quantity;
+  }
+
+  const [value, setValue] = useState(labeledCount.toString());
+  const inputRef = useRef(null);
+
+  // Sync with external changes
+  useEffect(() => {
+    setValue(labeledCount.toString());
+  }, [labeledCount]);
+
+  const percentage = quantity > 0 ? Math.round((labeledCount / quantity) * 100) : 0;
+
+  let colorClass = '';
+  if (quantity <= 0) {
+    colorClass = 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600';
+  } else if (percentage <= 25) {
+    colorClass = 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+  } else if (percentage <= 50) {
+    colorClass = 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
+  } else if (percentage <= 75) {
+    colorClass = 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
+  } else {
+    colorClass = 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800';
+  }
+
+  const handleSave = () => {
+    const newCount = Number(value) || 0;
+    if (newCount !== labeledCount) {
+      onSave(peptide.id, newCount);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSave();
+      e.target.blur();
+    } else if (e.key === 'Escape') {
+      setValue(labeledCount.toString());
+      e.target.blur();
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        ref={inputRef}
+        type="number"
+        min="0"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        onFocus={(e) => e.target.select()}
+        className={`w-16 px-2 py-1 text-xs font-medium text-center rounded border ${colorClass} text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none`}
+      />
+      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+        / {quantity} ({percentage}%)
+      </span>
     </div>
   );
 }
