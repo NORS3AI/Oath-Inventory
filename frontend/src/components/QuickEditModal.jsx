@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { db } from '../lib/db';
 
 export default function QuickEditModal({ peptide, onClose, onUpdate, position }) {
-  const [activeTab, setActiveTab] = useState('peptideId');
+  const [activeTab, setActiveTab] = useState('labeledCount');
   const [formData, setFormData] = useState({ ...peptide });
   const [isExcluded, setIsExcluded] = useState(false);
   const modalRef = useRef(null);
