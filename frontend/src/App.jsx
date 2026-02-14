@@ -169,7 +169,7 @@ function App() {
               />
             )}
             {activeTab === 'labeling' && <LabelingView peptides={peptides} onRefresh={refresh} />}
-            {activeTab === 'sales' && <SalesReadyView peptides={peptides} />}
+            {activeTab === 'sales' && <SalesReadyView peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
             {activeTab === 'compare' && <CompareView peptides={peptides} />}
           </>
@@ -488,14 +488,14 @@ function LabelingView({ peptides, onRefresh }) {
   );
 }
 
-function SalesReadyView({ peptides }) {
+function SalesReadyView({ peptides, onRefresh }) {
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sales Ready Validation</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Three-point check: Purity, Net Weight, and Label</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Two-point check: Purity and Net Weight</p>
       </div>
-      <SalesReady peptides={peptides} />
+      <SalesReady peptides={peptides} onRefresh={onRefresh} />
     </div>
   );
 }
