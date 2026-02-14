@@ -1,10 +1,19 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Camera, Trash2, ArrowUpDown, TrendingDown, TrendingUp, Plus, Minus, Package, ShoppingCart, Upload, Calendar, BarChart3 } from 'lucide-react';
+import { Camera, Trash2, ArrowUpDown, TrendingDown, TrendingUp, Plus, Minus, Package, ShoppingCart, Upload, Calendar, BarChart3, Columns3 } from 'lucide-react';
 import { db } from '../lib/db';
 import { parseInventoryCSV } from '../utils/csvParser';
+import ColumnReorderModal from './ColumnReorderModal';
 import { useToast } from './Toast';
 
 const MAX_COMPARE_ITEMS = 1000;
+
+const DEFAULT_COLUMNS = [
+  { id: 'product', label: 'Product' },
+  { id: 'oldQty', label: 'Older Qty' },
+  { id: 'newQty', label: 'Newer Qty' },
+  { id: 'change', label: 'Change' },
+  { id: 'status', label: 'Status' }
+];
 
 export default function Compare({ peptides }) {
   const [snapshots, setSnapshots] = useState([]);
@@ -20,10 +29,13 @@ export default function Compare({ peptides }) {
   const [trendRange, setTrendRange] = useState('week'); // 'week', '2weeks', 'month', 'all'
   const [trendSort, setTrendSort] = useState({ field: 'totalChange', direction: 'asc' });
   const [importing, setImporting] = useState(false);
+  const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
+  const [hiddenColumns, setHiddenColumns] = useState([]);
+  const [showColumnModal, setShowColumnModal] = useState(false);
   const fileInputRef = useRef(null);
   const { success, error: showError } = useToast();
 
-  // Load snapshot list
+  // Load snapshot list and column settings
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -37,6 +49,19 @@ export default function Compare({ peptides }) {
       } else if (list.length === 1) {
         setSelectedA(list[0].id);
       }
+
+      // Load column settings
+      const savedOrder = await db.settings.get('compareColumnOrder');
+      if (savedOrder) {
+        const ordered = savedOrder
+          .map(id => DEFAULT_COLUMNS.find(col => col.id === id))
+          .filter(Boolean);
+        const missing = DEFAULT_COLUMNS.filter(col => !savedOrder.includes(col.id));
+        setColumnOrder([...ordered, ...missing]);
+      }
+      const savedHidden = await db.settings.get('compareHiddenColumns');
+      if (savedHidden) setHiddenColumns(savedHidden);
+
       setLoading(false);
     };
     load();
@@ -292,6 +317,21 @@ export default function Compare({ peptides }) {
     return rows.slice(0, MAX_COMPARE_ITEMS);
   }, [trendSnapshots, trendSort]);
 
+  // Visible columns for Compare Two table
+  const visibleColumns = useMemo(() => {
+    return columnOrder.filter(col => !hiddenColumns.includes(col.id));
+  }, [columnOrder, hiddenColumns]);
+
+  const handleColumnReorder = async (newOrder) => {
+    setColumnOrder(newOrder);
+    await db.settings.set('compareColumnOrder', newOrder.map(c => c.id));
+  };
+
+  const handleColumnVisibility = async (newHidden) => {
+    setHiddenColumns(newHidden);
+    await db.settings.set('compareHiddenColumns', newHidden);
+  };
+
   const handleSort = (field) => {
     setSort(prev => ({ field, direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc' }));
   };
@@ -462,55 +502,78 @@ export default function Compare({ peptides }) {
 
               {/* Comparison Table */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Comparing <span className="font-medium text-gray-900 dark:text-white">{comparison.older.label}</span> → <span className="font-medium text-gray-900 dark:text-white">{comparison.newer.label}</span>
                     {' '}({displayRows.length}{comparison.rows.length > MAX_COMPARE_ITEMS ? ` of ${comparison.rows.length}` : ''} items shown)
                   </p>
+                  <button
+                    onClick={() => setShowColumnModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <Columns3 className="w-4 h-4" />
+                    Reorder
+                  </button>
                 </div>
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
                       <tr>
-                        <SortHeader field="peptideId" label="Product" sort={sort} onSort={handleSort} align="left" />
-                        <SortHeader field="oldQty" label={comparison.older.label} sort={sort} onSort={handleSort} align="right" />
-                        <SortHeader field="newQty" label={comparison.newer.label} sort={sort} onSort={handleSort} align="right" />
-                        <SortHeader field="change" label="Change" sort={sort} onSort={handleSort} align="right" />
-                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                        {visibleColumns.map(col => {
+                          if (col.id === 'product') return <SortHeader key={col.id} field="peptideId" label="Product" sort={sort} onSort={handleSort} align="left" />;
+                          if (col.id === 'oldQty') return <SortHeader key={col.id} field="oldQty" label={comparison.older.label} sort={sort} onSort={handleSort} align="right" />;
+                          if (col.id === 'newQty') return <SortHeader key={col.id} field="newQty" label={comparison.newer.label} sort={sort} onSort={handleSort} align="right" />;
+                          if (col.id === 'change') return <SortHeader key={col.id} field="change" label="Change" sort={sort} onSort={handleSort} align="right" />;
+                          if (col.id === 'status') return <th key={col.id} className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>;
+                          return null;
+                        })}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                       {displayRows.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                          <td colSpan={visibleColumns.length} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                             No items match this filter
                           </td>
                         </tr>
                       ) : (
                         displayRows.map(row => (
                           <tr key={row.peptideId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                            <td className="px-4 py-2">
-                              <div className="text-sm font-medium text-gray-900 dark:text-white">{row.name || row.peptideId}</div>
-                              {row.name && <div className="text-xs text-gray-500 dark:text-gray-400">{row.peptideId}</div>}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
-                              {row.oldQty !== null ? row.oldQty : '-'}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
-                              {row.newQty !== null ? row.newQty : '-'}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-right font-medium">
-                              <span className={
-                                row.change < 0 ? 'text-red-600 dark:text-red-400' :
-                                row.change > 0 ? 'text-green-600 dark:text-green-400' :
-                                'text-gray-500 dark:text-gray-400'
-                              }>
-                                {row.change > 0 ? '+' : ''}{row.change}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                              <ChangeTag type={row.type} />
-                            </td>
+                            {visibleColumns.map(col => {
+                              if (col.id === 'product') return (
+                                <td key={col.id} className="px-4 py-2">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">{row.name || row.peptideId}</div>
+                                  {row.name && <div className="text-xs text-gray-500 dark:text-gray-400">{row.peptideId}</div>}
+                                </td>
+                              );
+                              if (col.id === 'oldQty') return (
+                                <td key={col.id} className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
+                                  {row.oldQty !== null ? row.oldQty : '-'}
+                                </td>
+                              );
+                              if (col.id === 'newQty') return (
+                                <td key={col.id} className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
+                                  {row.newQty !== null ? row.newQty : '-'}
+                                </td>
+                              );
+                              if (col.id === 'change') return (
+                                <td key={col.id} className="px-4 py-2 text-sm text-right font-medium">
+                                  <span className={
+                                    row.change < 0 ? 'text-red-600 dark:text-red-400' :
+                                    row.change > 0 ? 'text-green-600 dark:text-green-400' :
+                                    'text-gray-500 dark:text-gray-400'
+                                  }>
+                                    {row.change > 0 ? '+' : ''}{row.change}
+                                  </span>
+                                </td>
+                              );
+                              if (col.id === 'status') return (
+                                <td key={col.id} className="px-4 py-2 text-right">
+                                  <ChangeTag type={row.type} />
+                                </td>
+                              );
+                              return null;
+                            })}
                           </tr>
                         ))
                       )}
@@ -656,6 +719,17 @@ export default function Compare({ peptides }) {
             }
           </p>
         </div>
+      )}
+
+      {/* Column Reorder Modal */}
+      {showColumnModal && (
+        <ColumnReorderModal
+          columns={columnOrder}
+          hiddenColumns={hiddenColumns}
+          onReorder={handleColumnReorder}
+          onVisibilityChange={handleColumnVisibility}
+          onClose={() => setShowColumnModal(false)}
+        />
       )}
     </div>
   );
