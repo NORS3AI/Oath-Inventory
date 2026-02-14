@@ -279,6 +279,10 @@ export default function Compare({ peptides }) {
       let aVal, bVal;
       if (trendSort.field === 'totalChange') { aVal = a.totalChange; bVal = b.totalChange; }
       else if (trendSort.field === 'lastQty') { aVal = a.lastQty; bVal = b.lastQty; }
+      else if (typeof trendSort.field === 'number') {
+        aVal = a.quantities[trendSort.field] ?? -1;
+        bVal = b.quantities[trendSort.field] ?? -1;
+      }
       else { aVal = (a.name || a.peptideId).toLowerCase(); bVal = (b.name || b.peptideId).toLowerCase(); }
       if (aVal < bVal) return trendSort.direction === 'asc' ? -1 : 1;
       if (aVal > bVal) return trendSort.direction === 'asc' ? 1 : -1;
@@ -575,9 +579,16 @@ export default function Compare({ peptides }) {
                           <ArrowUpDown className={`w-4 h-4 ${trendSort.field === 'peptideId' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
                         </div>
                       </th>
-                      {trendSnapshots.map(snap => (
-                        <th key={snap.id} className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
-                          {snap.label}
+                      {trendSnapshots.map((snap, idx) => (
+                        <th
+                          key={snap.id}
+                          className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                          onClick={() => handleTrendSort(idx)}
+                        >
+                          <div className="flex items-center justify-end space-x-1">
+                            <span>{snap.label}</span>
+                            <ArrowUpDown className={`w-3 h-3 ${trendSort.field === idx ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                          </div>
                         </th>
                       ))}
                       <th
