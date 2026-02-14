@@ -474,26 +474,26 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="flex flex-col gap-4">
-          {/* Main Controls Row */}
-          <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4">
-            {/* Search */}
-            {!excludeMode && (
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-                <input
-                  type="text"
-                  placeholder="Search peptides..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            )}
+          {/* Search - Full Width */}
+          {!excludeMode && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search peptides..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
 
+          {/* Controls Row */}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4">
             {/* Exclude Mode Info */}
             {excludeMode && (
               <div className="flex-1 flex items-center gap-3 px-4 py-2 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg">

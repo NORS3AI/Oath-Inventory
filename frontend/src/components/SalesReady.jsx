@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
-import { CheckCircle, XCircle, AlertTriangle, Package, Search, ArrowUpDown, List, GripVertical } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Package, Search, ArrowUpDown, List, GripVertical, Edit3 } from 'lucide-react';
 import { checkSalesReadiness, getReadinessStats, filterByReadiness } from '../utils/salesReadiness';
 import { db } from '../lib/db';
 import ColumnReorderModal from './ColumnReorderModal';
+import BulkEditModal from './BulkEditModal';
 
 // Define all available columns
 const DEFAULT_COLUMNS = [
@@ -16,8 +17,9 @@ const DEFAULT_COLUMNS = [
   { id: 'missing', label: 'Missing', field: 'missing', sortable: false }
 ];
 
-export default function SalesReady({ peptides }) {
+export default function SalesReady({ peptides, onRefresh }) {
   const [filter, setFilter] = useState('ALL'); // 'ALL', 'READY', 'BLOCKED'
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState(() => {
     // Restore search term from localStorage
     return localStorage.getItem('sales-searchTerm') || '';
@@ -346,7 +348,7 @@ export default function SalesReady({ peptides }) {
               <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
                 Missing Requirements Summary
               </h3>
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-yellow-700 dark:text-yellow-300">Missing Purity: </span>
                   <span className="font-semibold text-yellow-900 dark:text-yellow-100">{stats.missingPurity}</span>
@@ -354,10 +356,6 @@ export default function SalesReady({ peptides }) {
                 <div>
                   <span className="text-yellow-700 dark:text-yellow-300">Missing Net Weight: </span>
                   <span className="font-semibold text-yellow-900 dark:text-yellow-100">{stats.missingNetWeight}</span>
-                </div>
-                <div>
-                  <span className="text-yellow-700 dark:text-yellow-300">Missing Label: </span>
-                  <span className="font-semibold text-yellow-900 dark:text-yellow-100">{stats.missingLabel}</span>
                 </div>
               </div>
             </div>
@@ -396,6 +394,15 @@ export default function SalesReady({ peptides }) {
               <option value="BLOCKED">Blocked ({stats.blocked})</option>
             </select>
           </div>
+
+          {/* Bulk Edit Button */}
+          <button
+            onClick={() => setShowBulkEditModal(true)}
+            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Edit3 className="w-4 h-4" />
+            <span className="hidden sm:inline">Bulk Edit</span>
+          </button>
 
           {/* Reorder Columns Button */}
           <button
@@ -489,6 +496,14 @@ export default function SalesReady({ peptides }) {
           onClose={() => setShowReorderModal(false)}
         />
       )}
+
+      {/* Bulk Edit Modal */}
+      <BulkEditModal
+        isOpen={showBulkEditModal}
+        onClose={() => setShowBulkEditModal(false)}
+        peptides={sortedPeptides}
+        onSave={onRefresh}
+      />
     </div>
   );
 }
