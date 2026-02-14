@@ -3,6 +3,7 @@ import { Settings as SettingsIcon, X, Type, ScrollText } from 'lucide-react';
 
 // Complete patch history with timestamps
 const PATCH_NOTES = [
+  { version: '0.0.104', date: '2026-02-14 00:00', title: 'Compare: CSV import for snapshots, multi-day trend view (1wk/2wk/1mo), 1000-item limit' },
   { version: '0.0.103', date: '2026-02-11 00:00', title: 'Add sortable/hideable columns to Labeling tab, add Top 100 Needs Labeling report' },
   { version: '0.0.102', date: '2026-02-10 14:30', title: 'Add nickname field for products - displays under product name, used as display name when set' },
   { version: '0.0.101', date: '2026-02-10 11:10', title: 'Add bulk edit modal for mass editing all peptides at once' },
