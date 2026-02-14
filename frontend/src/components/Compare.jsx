@@ -1,7 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Camera, Trash2, ArrowUpDown, TrendingDown, TrendingUp, Plus, Minus, Package, ShoppingCart } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Camera, Trash2, ArrowUpDown, TrendingDown, TrendingUp, Plus, Minus, Package, ShoppingCart, Upload, Calendar, BarChart3 } from 'lucide-react';
 import { db } from '../lib/db';
+import { parseInventoryCSV } from '../utils/csvParser';
 import { useToast } from './Toast';
+
+const MAX_COMPARE_ITEMS = 1000;
 
 export default function Compare({ peptides }) {
   const [snapshots, setSnapshots] = useState([]);
@@ -10,9 +13,14 @@ export default function Compare({ peptides }) {
   const [snapshotA, setSnapshotA] = useState(null);
   const [snapshotB, setSnapshotB] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, decreased, increased, new, removed, unchanged
+  const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState({ field: 'change', direction: 'asc' });
   const [snapshotLabel, setSnapshotLabel] = useState('');
+  const [mode, setMode] = useState('compare'); // 'compare' or 'trend'
+  const [trendRange, setTrendRange] = useState('week'); // 'week', '2weeks', 'month', 'all'
+  const [trendSort, setTrendSort] = useState({ field: 'totalChange', direction: 'asc' });
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
   const { success, error: showError } = useToast();
 
   // Load snapshot list
@@ -67,6 +75,28 @@ export default function Compare({ peptides }) {
     success(`Snapshot saved (${peptides.length} items)`);
   };
 
+  // Import CSV as snapshot
+  const handleImportCSV = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const result = await parseInventoryCSV(file);
+      const items = result.peptides.slice(0, MAX_COMPARE_ITEMS);
+      const label = file.name.replace(/\.csv$/i, '');
+      await db.snapshots.save(items, label);
+      const list = await db.snapshots.getAll();
+      setSnapshots(list);
+      success(`Imported "${label}" (${items.length} items)`);
+    } catch (err) {
+      showError(`Failed to import CSV: ${err.message}`);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   // Delete a snapshot
   const handleDeleteSnapshot = async (id) => {
     await db.snapshots.delete(id);
@@ -81,7 +111,6 @@ export default function Compare({ peptides }) {
   const comparison = useMemo(() => {
     if (!snapshotA || !snapshotB) return null;
 
-    // Determine which is older/newer
     const older = snapshotA.timestamp <= snapshotB.timestamp ? snapshotA : snapshotB;
     const newer = snapshotA.timestamp <= snapshotB.timestamp ? snapshotB : snapshotA;
 
@@ -97,20 +126,13 @@ export default function Compare({ peptides }) {
     let totalSold = 0;
     let totalAdded = 0;
 
-    // Items in newer snapshot
     for (const [id, newItem] of newerMap) {
       const oldItem = olderMap.get(id);
       if (oldItem) {
         const change = newItem.quantity - oldItem.quantity;
-        if (change < 0) {
-          totalDecreased++;
-          totalSold += Math.abs(change);
-        } else if (change > 0) {
-          totalIncreased++;
-          totalAdded += change;
-        } else {
-          unchangedItems++;
-        }
+        if (change < 0) { totalDecreased++; totalSold += Math.abs(change); }
+        else if (change > 0) { totalIncreased++; totalAdded += change; }
+        else { unchangedItems++; }
         rows.push({
           peptideId: id,
           name: newItem.nickname || newItem.peptideName || '',
@@ -133,7 +155,6 @@ export default function Compare({ peptides }) {
       }
     }
 
-    // Items only in older snapshot (removed)
     for (const [id, oldItem] of olderMap) {
       if (!newerMap.has(id)) {
         removedItems++;
@@ -150,22 +171,12 @@ export default function Compare({ peptides }) {
     }
 
     return {
-      older,
-      newer,
-      rows,
-      summary: {
-        totalDecreased,
-        totalIncreased,
-        newItems,
-        removedItems,
-        unchangedItems,
-        totalSold,
-        totalAdded
-      }
+      older, newer, rows,
+      summary: { totalDecreased, totalIncreased, newItems, removedItems, unchangedItems, totalSold, totalAdded }
     };
   }, [snapshotA, snapshotB]);
 
-  // Filter and sort rows
+  // Filter and sort rows (with 1000 item limit)
   const displayRows = useMemo(() => {
     if (!comparison) return [];
     let rows = comparison.rows;
@@ -176,32 +187,113 @@ export default function Compare({ peptides }) {
 
     rows = [...rows].sort((a, b) => {
       let aVal, bVal;
-      if (sort.field === 'change') {
-        aVal = a.change;
-        bVal = b.change;
-      } else if (sort.field === 'oldQty') {
-        aVal = a.oldQty ?? -1;
-        bVal = b.oldQty ?? -1;
-      } else if (sort.field === 'newQty') {
-        aVal = a.newQty ?? -1;
-        bVal = b.newQty ?? -1;
-      } else {
-        aVal = (a.name || a.peptideId).toLowerCase();
-        bVal = (b.name || b.peptideId).toLowerCase();
-      }
+      if (sort.field === 'change') { aVal = a.change; bVal = b.change; }
+      else if (sort.field === 'oldQty') { aVal = a.oldQty ?? -1; bVal = b.oldQty ?? -1; }
+      else if (sort.field === 'newQty') { aVal = a.newQty ?? -1; bVal = b.newQty ?? -1; }
+      else { aVal = (a.name || a.peptideId).toLowerCase(); bVal = (b.name || b.peptideId).toLowerCase(); }
       if (aVal < bVal) return sort.direction === 'asc' ? -1 : 1;
       if (aVal > bVal) return sort.direction === 'asc' ? 1 : -1;
       return 0;
     });
 
-    return rows;
+    return rows.slice(0, MAX_COMPARE_ITEMS);
   }, [comparison, filter, sort]);
 
+  // Multi-snapshot trend data
+  const trendData = useMemo(() => {
+    if (mode !== 'trend' || snapshots.length < 2) return null;
+
+    // Filter snapshots by selected range
+    const now = Date.now();
+    const rangeMs = {
+      week: 7 * 24 * 60 * 60 * 1000,
+      '2weeks': 14 * 24 * 60 * 60 * 1000,
+      month: 30 * 24 * 60 * 60 * 1000,
+      all: Infinity
+    };
+    const cutoff = now - rangeMs[trendRange];
+
+    const filtered = snapshots.filter(s => new Date(s.timestamp).getTime() >= cutoff);
+    if (filtered.length < 2) return null;
+
+    // Sort oldest to newest
+    const sorted = [...filtered].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+    return { snapshotIds: sorted.map(s => s.id), snapshotLabels: sorted };
+  }, [mode, snapshots, trendRange]);
+
+  // Load full trend snapshot data
+  const [trendSnapshots, setTrendSnapshots] = useState([]);
+  useEffect(() => {
+    if (!trendData) { setTrendSnapshots([]); return; }
+    const load = async () => {
+      const loaded = [];
+      for (const id of trendData.snapshotIds) {
+        const snap = await db.snapshots.get(id);
+        if (snap) loaded.push(snap);
+      }
+      setTrendSnapshots(loaded);
+    };
+    load();
+  }, [trendData]);
+
+  // Compute trend table rows
+  const trendRows = useMemo(() => {
+    if (trendSnapshots.length < 2) return [];
+
+    // Collect all product IDs across all snapshots
+    const allIds = new Set();
+    for (const snap of trendSnapshots) {
+      for (const item of snap.items) {
+        allIds.add(item.peptideId);
+      }
+    }
+
+    const rows = [];
+    for (const id of allIds) {
+      const quantities = trendSnapshots.map(snap => {
+        const item = snap.items.find(i => i.peptideId === id);
+        return item ? item.quantity : null;
+      });
+
+      // Get name from latest snapshot that has this item
+      let name = '';
+      for (let i = trendSnapshots.length - 1; i >= 0; i--) {
+        const item = trendSnapshots[i].items.find(it => it.peptideId === id);
+        if (item) {
+          name = item.nickname || item.peptideName || '';
+          break;
+        }
+      }
+
+      // Calculate total change (first non-null to last non-null)
+      const firstQty = quantities.find(q => q !== null) ?? 0;
+      const lastQty = [...quantities].reverse().find(q => q !== null) ?? 0;
+      const totalChange = lastQty - firstQty;
+
+      rows.push({ peptideId: id, name, quantities, totalChange, firstQty, lastQty });
+    }
+
+    // Sort
+    rows.sort((a, b) => {
+      let aVal, bVal;
+      if (trendSort.field === 'totalChange') { aVal = a.totalChange; bVal = b.totalChange; }
+      else if (trendSort.field === 'lastQty') { aVal = a.lastQty; bVal = b.lastQty; }
+      else { aVal = (a.name || a.peptideId).toLowerCase(); bVal = (b.name || b.peptideId).toLowerCase(); }
+      if (aVal < bVal) return trendSort.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return trendSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return rows.slice(0, MAX_COMPARE_ITEMS);
+  }, [trendSnapshots, trendSort]);
+
   const handleSort = (field) => {
-    setSort(prev => ({
-      field,
-      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
+    setSort(prev => ({ field, direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc' }));
+  };
+
+  const handleTrendSort = (field) => {
+    setTrendSort(prev => ({ field, direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc' }));
   };
 
   if (loading) {
@@ -215,7 +307,7 @@ export default function Compare({ peptides }) {
 
   return (
     <div className="space-y-6">
-      {/* Take Snapshot */}
+      {/* Snapshots Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Snapshots</h3>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -233,9 +325,25 @@ export default function Compare({ peptides }) {
             <Camera className="w-4 h-4" />
             Take Snapshot
           </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors whitespace-nowrap disabled:opacity-50"
+          >
+            <Upload className="w-4 h-4" />
+            {importing ? 'Importing...' : 'Import CSV'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            className="hidden"
+          />
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
           Snapshots are also taken automatically once per day. You have {snapshots.length} snapshot{snapshots.length !== 1 ? 's' : ''} saved.
+          {' '}Max {MAX_COMPARE_ITEMS} items per comparison.
         </p>
 
         {/* Snapshot List */}
@@ -261,142 +369,265 @@ export default function Compare({ peptides }) {
         )}
       </div>
 
-      {/* Compare Selection */}
+      {/* Mode Toggle */}
       {snapshots.length >= 2 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Compare Two Snapshots</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Older Snapshot</label>
-              <select
-                value={selectedA}
-                onChange={(e) => setSelectedA(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select...</option>
-                {snapshots.map(s => (
-                  <option key={s.id} value={s.id}>{s.label} ({s.itemCount} items)</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Newer Snapshot</label>
-              <select
-                value={selectedB}
-                onChange={(e) => setSelectedB(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select...</option>
-                {snapshots.map(s => (
-                  <option key={s.id} value={s.id}>{s.label} ({s.itemCount} items)</option>
-                ))}
-              </select>
-            </div>
-          </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setMode('compare')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              mode === 'compare'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <ArrowUpDown className="w-4 h-4" />
+            Compare Two
+          </button>
+          <button
+            onClick={() => setMode('trend')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              mode === 'trend'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Trend Over Time
+          </button>
         </div>
       )}
 
-      {/* Comparison Results */}
-      {comparison && (
+      {/* ===== COMPARE TWO MODE ===== */}
+      {mode === 'compare' && (
         <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <SummaryCard
-              icon={<ShoppingCart className="w-6 h-6" />}
-              label="Units Sold / Used"
-              value={comparison.summary.totalSold}
-              color="red"
-              subtitle={`${comparison.summary.totalDecreased} products`}
-            />
-            <SummaryCard
-              icon={<TrendingUp className="w-6 h-6" />}
-              label="Units Restocked"
-              value={comparison.summary.totalAdded}
-              color="green"
-              subtitle={`${comparison.summary.totalIncreased + comparison.summary.newItems} products`}
-            />
-            <SummaryCard
-              icon={<Plus className="w-6 h-6" />}
-              label="New Products"
-              value={comparison.summary.newItems}
-              color="blue"
-            />
-            <SummaryCard
-              icon={<Minus className="w-6 h-6" />}
-              label="Removed"
-              value={comparison.summary.removedItems}
-              color="orange"
-            />
-          </div>
-
-          {/* Filter Buttons */}
-          <div className="flex gap-2 flex-wrap">
-            <FilterBtn active={filter === 'all'} onClick={() => setFilter('all')} label="All" count={comparison.rows.length} />
-            <FilterBtn active={filter === 'decreased'} onClick={() => setFilter('decreased')} label="Decreased" count={comparison.summary.totalDecreased} color="red" />
-            <FilterBtn active={filter === 'increased'} onClick={() => setFilter('increased')} label="Increased" count={comparison.summary.totalIncreased} color="green" />
-            <FilterBtn active={filter === 'new'} onClick={() => setFilter('new')} label="New" count={comparison.summary.newItems} color="blue" />
-            <FilterBtn active={filter === 'removed'} onClick={() => setFilter('removed')} label="Removed" count={comparison.summary.removedItems} color="orange" />
-            <FilterBtn active={filter === 'unchanged'} onClick={() => setFilter('unchanged')} label="Unchanged" count={comparison.summary.unchangedItems} color="gray" />
-          </div>
-
-          {/* Comparison Table */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Comparing <span className="font-medium text-gray-900 dark:text-white">{comparison.older.label}</span> → <span className="font-medium text-gray-900 dark:text-white">{comparison.newer.label}</span>
-                {' '}({displayRows.length} items shown)
-              </p>
+          {/* Compare Selection */}
+          {snapshots.length >= 2 && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Compare Two Snapshots</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Older Snapshot</label>
+                  <select
+                    value={selectedA}
+                    onChange={(e) => setSelectedA(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select...</option>
+                    {snapshots.map(s => (
+                      <option key={s.id} value={s.id}>{s.label} ({s.itemCount} items)</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Newer Snapshot</label>
+                  <select
+                    value={selectedB}
+                    onChange={(e) => setSelectedB(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select...</option>
+                    {snapshots.map(s => (
+                      <option key={s.id} value={s.id}>{s.label} ({s.itemCount} items)</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                  <tr>
-                    <SortHeader field="peptideId" label="Product" sort={sort} onSort={handleSort} align="left" />
-                    <SortHeader field="oldQty" label={comparison.older.label} sort={sort} onSort={handleSort} align="right" />
-                    <SortHeader field="newQty" label={comparison.newer.label} sort={sort} onSort={handleSort} align="right" />
-                    <SortHeader field="change" label="Change" sort={sort} onSort={handleSort} align="right" />
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {displayRows.length === 0 ? (
+          )}
+
+          {/* Comparison Results */}
+          {comparison && (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <SummaryCard icon={<ShoppingCart className="w-6 h-6" />} label="Units Sold / Used" value={comparison.summary.totalSold} color="red" subtitle={`${comparison.summary.totalDecreased} products`} />
+                <SummaryCard icon={<TrendingUp className="w-6 h-6" />} label="Units Restocked" value={comparison.summary.totalAdded} color="green" subtitle={`${comparison.summary.totalIncreased + comparison.summary.newItems} products`} />
+                <SummaryCard icon={<Plus className="w-6 h-6" />} label="New Products" value={comparison.summary.newItems} color="blue" />
+                <SummaryCard icon={<Minus className="w-6 h-6" />} label="Removed" value={comparison.summary.removedItems} color="orange" />
+              </div>
+
+              {/* Filter Buttons */}
+              <div className="flex gap-2 flex-wrap">
+                <FilterBtn active={filter === 'all'} onClick={() => setFilter('all')} label="All" count={comparison.rows.length} />
+                <FilterBtn active={filter === 'decreased'} onClick={() => setFilter('decreased')} label="Decreased" count={comparison.summary.totalDecreased} color="red" />
+                <FilterBtn active={filter === 'increased'} onClick={() => setFilter('increased')} label="Increased" count={comparison.summary.totalIncreased} color="green" />
+                <FilterBtn active={filter === 'new'} onClick={() => setFilter('new')} label="New" count={comparison.summary.newItems} color="blue" />
+                <FilterBtn active={filter === 'removed'} onClick={() => setFilter('removed')} label="Removed" count={comparison.summary.removedItems} color="orange" />
+                <FilterBtn active={filter === 'unchanged'} onClick={() => setFilter('unchanged')} label="Unchanged" count={comparison.summary.unchangedItems} color="gray" />
+              </div>
+
+              {/* Comparison Table */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Comparing <span className="font-medium text-gray-900 dark:text-white">{comparison.older.label}</span> → <span className="font-medium text-gray-900 dark:text-white">{comparison.newer.label}</span>
+                    {' '}({displayRows.length}{comparison.rows.length > MAX_COMPARE_ITEMS ? ` of ${comparison.rows.length}` : ''} items shown)
+                  </p>
+                </div>
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                      <tr>
+                        <SortHeader field="peptideId" label="Product" sort={sort} onSort={handleSort} align="left" />
+                        <SortHeader field="oldQty" label={comparison.older.label} sort={sort} onSort={handleSort} align="right" />
+                        <SortHeader field="newQty" label={comparison.newer.label} sort={sort} onSort={handleSort} align="right" />
+                        <SortHeader field="change" label="Change" sort={sort} onSort={handleSort} align="right" />
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {displayRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            No items match this filter
+                          </td>
+                        </tr>
+                      ) : (
+                        displayRows.map(row => (
+                          <tr key={row.peptideId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <td className="px-4 py-2">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">{row.name || row.peptideId}</div>
+                              {row.name && <div className="text-xs text-gray-500 dark:text-gray-400">{row.peptideId}</div>}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
+                              {row.oldQty !== null ? row.oldQty : '-'}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
+                              {row.newQty !== null ? row.newQty : '-'}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-right font-medium">
+                              <span className={
+                                row.change < 0 ? 'text-red-600 dark:text-red-400' :
+                                row.change > 0 ? 'text-green-600 dark:text-green-400' :
+                                'text-gray-500 dark:text-gray-400'
+                              }>
+                                {row.change > 0 ? '+' : ''}{row.change}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <ChangeTag type={row.type} />
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ===== TREND MODE ===== */}
+      {mode === 'trend' && snapshots.length >= 2 && (
+        <>
+          {/* Range Selector */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Inventory Trend</h3>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { id: 'week', label: '1 Week' },
+                { id: '2weeks', label: '2 Weeks' },
+                { id: 'month', label: '1 Month' },
+                { id: 'all', label: 'All Time' }
+              ].map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => setTrendRange(r.id)}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    trendRange === r.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4" />
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            {trendData && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
+                Showing {trendData.snapshotLabels.length} snapshots across {trendRows.length} products
+                {trendRows.length >= MAX_COMPARE_ITEMS && ` (limited to ${MAX_COMPARE_ITEMS})`}
+              </p>
+            )}
+            {!trendData && (
+              <p className="text-sm text-orange-600 dark:text-orange-400 mt-3">
+                Not enough snapshots in the selected range. Try a wider range or take more snapshots.
+              </p>
+            )}
+          </div>
+
+          {/* Trend Table */}
+          {trendSnapshots.length >= 2 && trendRows.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                        No items match this filter
-                      </td>
+                      <th
+                        className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 sticky left-0 bg-gray-50 dark:bg-gray-700 z-10"
+                        onClick={() => handleTrendSort('peptideId')}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span>Product</span>
+                          <ArrowUpDown className={`w-4 h-4 ${trendSort.field === 'peptideId' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                        </div>
+                      </th>
+                      {trendSnapshots.map(snap => (
+                        <th key={snap.id} className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                          {snap.label}
+                        </th>
+                      ))}
+                      <th
+                        className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        onClick={() => handleTrendSort('totalChange')}
+                      >
+                        <div className="flex items-center justify-end space-x-2">
+                          <span>Net Change</span>
+                          <ArrowUpDown className={`w-4 h-4 ${trendSort.field === 'totalChange' ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                        </div>
+                      </th>
                     </tr>
-                  ) : (
-                    displayRows.map(row => (
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {trendRows.map(row => (
                       <tr key={row.peptideId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-2 sticky left-0 bg-white dark:bg-gray-800 z-10">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">{row.name || row.peptideId}</div>
                           {row.name && <div className="text-xs text-gray-500 dark:text-gray-400">{row.peptideId}</div>}
                         </td>
-                        <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
-                          {row.oldQty !== null ? row.oldQty : '-'}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
-                          {row.newQty !== null ? row.newQty : '-'}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-right font-medium">
+                        {row.quantities.map((qty, idx) => {
+                          // Color code changes between consecutive snapshots
+                          const prevQty = idx > 0 ? row.quantities[idx - 1] : null;
+                          let cellColor = 'text-gray-500 dark:text-gray-400';
+                          if (qty !== null && prevQty !== null) {
+                            if (qty < prevQty) cellColor = 'text-red-600 dark:text-red-400';
+                            else if (qty > prevQty) cellColor = 'text-green-600 dark:text-green-400';
+                          }
+                          return (
+                            <td key={idx} className={`px-3 py-2 text-sm text-right font-medium ${cellColor}`}>
+                              {qty !== null ? qty : '-'}
+                            </td>
+                          );
+                        })}
+                        <td className="px-4 py-2 text-sm text-right font-bold">
                           <span className={
-                            row.change < 0 ? 'text-red-600 dark:text-red-400' :
-                            row.change > 0 ? 'text-green-600 dark:text-green-400' :
+                            row.totalChange < 0 ? 'text-red-600 dark:text-red-400' :
+                            row.totalChange > 0 ? 'text-green-600 dark:text-green-400' :
                             'text-gray-500 dark:text-gray-400'
                           }>
-                            {row.change > 0 ? '+' : ''}{row.change}
+                            {row.totalChange > 0 ? '+' : ''}{row.totalChange}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-right">
-                          <ChangeTag type={row.type} />
-                        </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
 
@@ -409,8 +640,8 @@ export default function Compare({ peptides }) {
           </h3>
           <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
             {snapshots.length === 0
-              ? 'Take your first snapshot to start tracking inventory changes. A snapshot saves the current state of all your inventory data.'
-              : 'Take another snapshot (e.g. tomorrow) to compare changes. Snapshots are also saved automatically once per day.'
+              ? 'Take your first snapshot or import a CSV to start tracking inventory changes.'
+              : 'Take another snapshot or import a CSV to compare changes.'
             }
           </p>
         </div>
