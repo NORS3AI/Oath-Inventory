@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.105', date: '2026-02-15', title: 'Add Pick List Scanner skeleton (OCR-based pick list reading, template selection, running tally UI)' },
   { version: '0.0.104', date: '2026-02-14', title: 'Compare: CSV import for snapshots, multi-day trend view (1wk/2wk/1mo), 1000-item limit' },
   { version: '0.0.103', date: '2026-02-11', title: 'Add sortable/hideable columns to Labeling tab, add Top 100 Needs Labeling report' },
   { version: '0.0.102', date: '2026-02-10', title: 'Add nickname field for products - displays under product name, used as display name when set' },

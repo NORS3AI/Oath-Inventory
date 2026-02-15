@@ -178,6 +178,58 @@ Before a peptide can be sold, it must have:
 
 ## Future Enhancements (Post-MVP)
 
+### 7. Pick List Scanner (In Progress)
+
+#### 7.1 Overview
+OCR-based scanner to photograph paper pick lists and automatically deduct sold quantities from labeled inventory counts. Eliminates manual counting of 40-70+ paper pick lists each morning.
+
+#### 7.2 Template Support
+Two pick list formats from WooCommerce fulfillment:
+- **Template A (Structured)**: Table/grid layout with product name, net weight, quantity columns
+- **Template B (Visual)**: Large text format, sometimes includes product images
+
+#### 7.3 Workflow
+1. Select pick list template (A or B)
+2. Photograph each pick list sheet (camera or gallery upload)
+3. OCR extracts product names and quantities from each photo
+4. System aggregates totals across all scanned sheets automatically
+5. User reviews running tally, corrects any OCR misreads
+6. One-tap "Apply" deducts totals from labeled inventory counts
+
+#### 7.4 Problem Solved
+- WooCommerce inventory numbers are unreliable due to indefinite cart holds
+- Pick lists (completed orders) are the source of truth for actual sales
+- Currently requires manual counting 100+ times across 40-70 paper sheets daily
+- Scanner automates aggregation — user just photographs and taps Apply
+
+#### 7.5 Status
+- Skeleton UI complete with template selection, scan area, running tally, and apply button
+- OCR integration pending — needs physical template samples to calibrate recognition
+- Will match OCR-extracted product names against existing inventory product list
+
+### 8. Inventory Comparison & Snapshots
+
+#### 8.1 Snapshot System
+- Automatic daily snapshots of inventory state
+- Manual snapshots with custom labels
+- CSV import as snapshots for comparing older inventory data
+- Max 1000 items per comparison
+
+#### 8.2 Compare Two Snapshots
+- Side-by-side comparison of any two snapshots
+- Summary cards: Units Sold, Restocked, New Products, Removed
+- Filter by change type (Decreased, Increased, New, Removed, Unchanged)
+- Sortable, reorderable columns
+
+#### 8.3 Trend Over Time
+- Multi-snapshot trend view across selectable time ranges (1wk, 2wk, 1mo, all)
+- Color-coded quantity changes between consecutive snapshots
+- Net change column showing overall movement per product
+
+---
+
+## Future Enhancements (Post-MVP)
+
 ### Phase 2+ Features
 - **Backend API server** (Express.js + SQLite)
 - **User authentication** (JWT-based login)
