@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown, GitCompareArrows } from 'lucide-react';
+import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown, GitCompareArrows, ScanLine } from 'lucide-react';
 import { calculateStockStatus } from './utils/stockStatus';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
 import { ToastProvider } from './components/Toast';
 import { db } from './lib/db';
 import CSVUpload from './components/CSVUpload';
+import PickListScanner from './components/PickListScanner';
 import InventoryTable from './components/InventoryTable';
 import SalesReady from './components/SalesReady';
 import Reports from './components/Reports';
@@ -165,7 +166,7 @@ function App() {
         ) : (
           <>
             {activeTab === 'dashboard' && <DashboardView stats={stats} peptides={peptides} thresholds={thresholds} onNavigate={setActiveTab} />}
-            {activeTab === 'import' && <CSVUpload onImportComplete={handleImportComplete} />}
+            {activeTab === 'import' && <ImportView onImportComplete={handleImportComplete} peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'inventory' && (
               <InventoryView
                 peptides={peptides}
@@ -508,14 +509,44 @@ function SalesReadyView({ peptides, onRefresh }) {
   );
 }
 
-function ImportView({ onImportComplete }) {
+function ImportView({ onImportComplete, peptides, onRefresh }) {
+  const [subTab, setSubTab] = useState('csv');
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Import CSV</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Upload your inventory CSV file</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Import & Scan</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Import inventory data or scan pick lists</p>
       </div>
-      <CSVUpload onImportComplete={onImportComplete} />
+
+      {/* Sub-tabs */}
+      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-0">
+        <button
+          onClick={() => setSubTab('csv')}
+          className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            subTab === 'csv'
+              ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+              : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          <Upload className="w-4 h-4" />
+          Import CSV
+        </button>
+        <button
+          onClick={() => setSubTab('scanner')}
+          className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            subTab === 'scanner'
+              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+              : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          <ScanLine className="w-4 h-4" />
+          Pick List Scanner
+        </button>
+      </div>
+
+      {subTab === 'csv' && <CSVUpload onImportComplete={onImportComplete} />}
+      {subTab === 'scanner' && <PickListScanner peptides={peptides} onRefresh={onRefresh} />}
     </div>
   );
 }
