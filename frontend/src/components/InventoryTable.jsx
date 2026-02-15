@@ -204,6 +204,12 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
       let aVal = a[sortField];
       let bVal = b[sortField];
 
+      // Use nickname for product name sorting when available
+      if (sortField === 'peptideId' || sortField === 'peptideName') {
+        aVal = a.nickname || a[sortField] || '';
+        bVal = b.nickname || b[sortField] || '';
+      }
+
       // Handle numeric sorting
       if (sortField === 'quantity' || sortField === 'orderedQty' || sortField === 'offBooks') {
         aVal = Number(aVal) || 0;

@@ -16,7 +16,7 @@ export async function parseInventoryCSV(file, options = {}) {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: (header) => header.trim(),
+      transformHeader: (header) => header.replace(/^\uFEFF/, '').replace(/^["']+|["']+$/g, '').trim(),
       complete: (results) => {
         try {
           const peptides = transformPeptideData(results.data, options);
@@ -130,18 +130,24 @@ function extractField(row, possibleHeaders) {
     return undefined;
   }
 
+  // Normalize row keys once (strip BOM, quotes, whitespace)
+  const normalizedKeys = {};
+  for (const k of Object.keys(row)) {
+    const clean = k.replace(/^\uFEFF/, '').replace(/^["']+|["']+$/g, '').trim().toLowerCase();
+    normalizedKeys[clean] = k;
+  }
+
   for (const header of possibleHeaders) {
     // Exact match
     if (row[header] !== undefined && row[header] !== '') {
       return row[header];
     }
 
-    // Case-insensitive match
-    const key = Object.keys(row).find(
-      k => k.toLowerCase() === header.toLowerCase()
-    );
-    if (key && row[key] !== undefined && row[key] !== '') {
-      return row[key];
+    // Normalized case-insensitive match
+    const cleanHeader = header.toLowerCase();
+    const originalKey = normalizedKeys[cleanHeader];
+    if (originalKey && row[originalKey] !== undefined && row[originalKey] !== '') {
+      return row[originalKey];
     }
   }
 
