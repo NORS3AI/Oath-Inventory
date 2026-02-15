@@ -55,7 +55,7 @@ export const db = {
       await peptideStore.iterate((value) => {
         peptides.push(value);
       });
-      return peptides.sort((a, b) => a.peptideId.localeCompare(b.peptideId));
+      return peptides.sort((a, b) => (a.nickname || a.peptideId).localeCompare(b.nickname || b.peptideId));
     },
 
     async get(id) {

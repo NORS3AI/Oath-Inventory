@@ -146,6 +146,12 @@ export default function SalesReady({ peptides, onRefresh }) {
       let aVal = a[sortField];
       let bVal = b[sortField];
 
+      // Use nickname for product name sorting when available
+      if (sortField === 'peptideId' || sortField === 'peptideName') {
+        aVal = a.nickname || a[sortField] || '';
+        bVal = b.nickname || b[sortField] || '';
+      }
+
       // Handle status sorting
       if (sortField === 'status') {
         const statusPriority = {

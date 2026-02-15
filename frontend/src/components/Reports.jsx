@@ -831,6 +831,11 @@ ${stats.needsAttention.map(p =>
                   let aVal = a[lowStockSort.field];
                   let bVal = b[lowStockSort.field];
 
+                  if (lowStockSort.field === 'peptideId') {
+                    aVal = a.nickname || a.peptideId || '';
+                    bVal = b.nickname || b.peptideId || '';
+                  }
+
                   if (lowStockSort.field === 'status') {
                     const statusPriority = { 'OUT_OF_STOCK': 1, 'NEARLY_OUT': 2, 'LOW_STOCK': 3 };
                     aVal = statusPriority[aVal] || 999;

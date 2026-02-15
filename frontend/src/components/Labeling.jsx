@@ -219,6 +219,9 @@ export default function Labeling({ peptides, onRefresh }) {
       } else if (sortField === 'quantity') {
         aVal = Number(a.quantity) || 0;
         bVal = Number(b.quantity) || 0;
+      } else if (sortField === 'peptideId' || sortField === 'peptideName') {
+        aVal = a.nickname || a[sortField] || '';
+        bVal = b.nickname || b[sortField] || '';
       } else {
         aVal = a[sortField];
         bVal = b[sortField];
