@@ -12,6 +12,7 @@ import Reports from './components/Reports';
 import Labeling from './components/Labeling';
 import Compare from './components/Compare';
 import SettingsModal from './components/SettingsModal';
+import PatchNotesModal from './components/PatchNotesModal';
 import packageJson from '../package.json';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
   const { isDark, toggle } = useDarkMode();
   const [orders, setOrders] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPatchNotes, setShowPatchNotes] = useState(false);
   const { peptides, allPeptides, loading, thresholds, stats, refresh, bulkExclude } = useInventory();
 
   // Load saved font size on mount
@@ -91,7 +93,12 @@ function App() {
                   <Moon className="w-5 h-5 text-gray-600" />
                 )}
               </button>
-              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">v{packageJson.version}</span>
+              <button
+                onClick={() => setShowPatchNotes(true)}
+                className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors cursor-pointer font-medium"
+              >
+                v{packageJson.version}
+              </button>
             </div>
           </div>
         </div>
@@ -187,6 +194,7 @@ function App() {
 
       {/* Settings Modal */}
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      <PatchNotesModal isOpen={showPatchNotes} onClose={() => setShowPatchNotes(false)} currentVersion={packageJson.version} />
     </div>
     </ToastProvider>
   );
