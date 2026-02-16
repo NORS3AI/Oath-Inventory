@@ -115,25 +115,36 @@ export default function PickListScanner({ peptides, onRefresh }) {
     setScanning(true);
     setOcrProgress(0);
 
+    let worker = null;
     try {
-      // Run OCR with Tesseract.js
-      const result = await Tesseract.recognize(
-        file,
-        'eng',
-        {
-          logger: (m) => {
-            if (m.status === 'recognizing text') {
-              setOcrProgress(Math.round(m.progress * 100));
-            }
+      // Create Tesseract worker with proper configuration
+      worker = await Tesseract.createWorker('eng', 1, {
+        logger: (m) => {
+          console.log('Tesseract:', m);
+          if (m.status === 'recognizing text') {
+            setOcrProgress(Math.round(m.progress * 100));
           }
-        }
-      );
+        },
+        // Use CDN for worker files
+        workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+        langPath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tessdata',
+        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5',
+      });
+
+      console.log('Worker created, starting OCR...');
+
+      // Run OCR
+      const result = await worker.recognize(file);
+
+      console.log('OCR completed:', result.data.text);
 
       // Parse OCR text
       const extractedItems = parseOCRText(result.data.text);
+      console.log('Extracted items:', extractedItems);
 
       // Match against inventory
       const matchedItems = matchProducts(extractedItems);
+      console.log('Matched items:', matchedItems);
 
       // Add to scanned items (aggregate duplicates)
       setScannedItems(prev => {
@@ -149,10 +160,74 @@ export default function PickListScanner({ peptides, onRefresh }) {
         return updated;
       });
 
+      if (matchedItems.length === 0) {
+        alert('No products found in image. Try a clearer photo or adjust the angle.');
+      }
+
     } catch (error) {
       console.error('OCR failed:', error);
-      alert('Failed to scan image. Please try again.');
+
+      // Provide specific error messages based on error type
+      let errorTitle = 'OCR Scan Failed';
+      let errorDetails = '';
+      let suggestions = [];
+
+      if (error.message?.includes('network') || error.message?.includes('fetch') || error.message?.includes('CORS')) {
+        errorTitle = 'Network Error';
+        errorDetails = 'Could not download OCR engine files from the internet.';
+        suggestions = [
+          'Check your internet connection',
+          'Try disabling browser extensions that block requests',
+          'Check if your firewall is blocking cdn.jsdelivr.net',
+          'Try refreshing the page and scanning again'
+        ];
+      } else if (error.message?.includes('image') || error.message?.includes('format')) {
+        errorTitle = 'Image Format Error';
+        errorDetails = 'The image format is not supported or the file is corrupted.';
+        suggestions = [
+          'Try a different image format (JPG, PNG work best)',
+          'Make sure the image file is not corrupted',
+          'Try taking a new photo'
+        ];
+      } else if (error.message?.includes('timeout')) {
+        errorTitle = 'Processing Timeout';
+        errorDetails = 'OCR took too long to process the image.';
+        suggestions = [
+          'Try a smaller image (reduce photo resolution)',
+          'Crop the image to only show the pick list',
+          'Close other browser tabs to free up memory'
+        ];
+      } else if (error.message?.includes('memory') || error.message?.includes('heap')) {
+        errorTitle = 'Memory Error';
+        errorDetails = 'Not enough memory to process the image.';
+        suggestions = [
+          'Try a smaller image file',
+          'Close other browser tabs',
+          'Restart your browser',
+          'Try using a desktop computer if on mobile'
+        ];
+      } else {
+        errorDetails = `Technical error: ${error.message || 'Unknown error'}`;
+        suggestions = [
+          'Check browser console (F12) for details',
+          'Try a clearer, well-lit photo',
+          'Ensure text is horizontal and readable',
+          'Make sure the image is in focus',
+          'Try refreshing the page'
+        ];
+      }
+
+      const fullMessage = `${errorTitle}\n\n${errorDetails}\n\n💡 Try these solutions:\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+      alert(fullMessage);
     } finally {
+      // Clean up worker
+      if (worker) {
+        try {
+          await worker.terminate();
+        } catch (e) {
+          console.error('Failed to terminate worker:', e);
+        }
+      }
       setScanning(false);
       setOcrProgress(0);
       setUploadedImage(null);
