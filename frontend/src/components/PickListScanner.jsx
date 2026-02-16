@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
-import { Camera, ScanLine, FileText, Plus, Trash2, Check, AlertCircle, ChevronDown } from 'lucide-react';
+import { Camera, ScanLine, FileText, Plus, Trash2, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+// Import template images
+import templateAImage from '../assets/templates/template-a.jpg';
 
 /**
  * Pick List Scanner - Skeleton Preview
@@ -19,6 +21,7 @@ export default function PickListScanner({ peptides, onRefresh }) {
   const [template, setTemplate] = useState('structured'); // 'structured' or 'visual'
   const [scannedItems, setScannedItems] = useState([]);
   const [scanning, setScanning] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
   const fileInputRef = useRef(null);
 
   // Placeholder — will be replaced with real OCR processing
@@ -126,6 +129,60 @@ export default function PickListScanner({ peptides, onRefresh }) {
             )}
           </button>
         </div>
+      </div>
+
+      {/* Template Preview */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <button
+          onClick={() => setShowPreview(!showPreview)}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Template Preview - {template === 'structured' ? 'Template A (Structured)' : 'Template B (Visual)'}
+            </h3>
+          </div>
+          {showPreview ? (
+            <ChevronUp className="w-5 h-5 text-gray-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-400" />
+          )}
+        </button>
+
+        {showPreview && (
+          <div className="px-6 pb-6">
+            {template === 'structured' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  This is an example of Template A - the structured pick list format with table/grid layout.
+                </p>
+                <div className="border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
+                  <img
+                    src={templateAImage}
+                    alt="Template A - Structured Pick List Example"
+                    className="w-full h-auto"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-500 italic">
+                  OCR will extract product names, net weights, and quantities from this format.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Template B preview will be added once a sample image is provided.
+                </p>
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center">
+                  <Camera className="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                  <p className="text-sm text-gray-400 dark:text-gray-600">
+                    Template B example coming soon
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Scan Area */}
