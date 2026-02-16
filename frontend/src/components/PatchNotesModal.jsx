@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.107', date: '2026-02-16', title: 'Fix build error: handle missing template images gracefully with placeholder UI' },
   { version: '0.0.106', date: '2026-02-16', title: 'Add Template Preview section to Pick List Scanner with collapsible image display and photo library support' },
   { version: '0.0.105', date: '2026-02-15', title: 'Add Pick List Scanner skeleton (OCR-based pick list reading, template selection, running tally UI)' },
   { version: '0.0.104', date: '2026-02-14', title: 'Compare: CSV import for snapshots, multi-day trend view (1wk/2wk/1mo), 1000-item limit' },
