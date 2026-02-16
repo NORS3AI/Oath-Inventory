@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.109', date: '2026-02-16', title: 'CSV Import: Labeled counts now auto-adjust with quantity changes (if qty -100, labeled also -100)' },
   { version: '0.0.108', date: '2026-02-16', title: 'LIVE: Full OCR integration with Tesseract.js - Pick List Scanner now extracts products and quantities, auto-deducts from labeled counts' },
   { version: '0.0.107', date: '2026-02-16', title: 'Fix build error: handle missing template images gracefully with placeholder UI' },
   { version: '0.0.106', date: '2026-02-16', title: 'Add Template Preview section to Pick List Scanner with collapsible image display and photo library support' },

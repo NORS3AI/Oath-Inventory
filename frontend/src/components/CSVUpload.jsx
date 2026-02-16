@@ -106,13 +106,26 @@ export default function CSVUpload({ onImportComplete }) {
         await db.peptides.bulkImport(parseResult.peptides);
         importedCount = parseResult.peptides.length;
       } else {
-        // Update mode: only update quantity, preserve all other manually edited fields
+        // Update mode: update quantity AND adjust labeled count proportionally
         for (const peptide of parseResult.peptides) {
           const existing = await db.peptides.get(peptide.peptideId);
           if (existing) {
-            // Update ONLY quantity - preserve all manually edited fields
+            // Calculate delta: how much quantity changed
+            const oldQuantity = existing.quantity || 0;
+            const newQuantity = peptide.quantity || 0;
+            const delta = newQuantity - oldQuantity;
+
+            // Apply same delta to labeled count
+            const oldLabeled = existing.labeledCount || 0;
+            let newLabeled = oldLabeled + delta;
+
+            // Ensure labeled is between 0 and new quantity
+            newLabeled = Math.max(0, Math.min(newLabeled, newQuantity));
+
+            // Update quantity AND labeled count
             await db.peptides.update(peptide.peptideId, {
-              quantity: peptide.quantity
+              quantity: newQuantity,
+              labeledCount: newLabeled
             });
             updatedCount++;
           } else {
@@ -208,7 +221,7 @@ export default function CSVUpload({ onImportComplete }) {
             <div>
               <div className="font-medium text-gray-900 dark:text-white">Update Existing Inventory</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Update ONLY quantities for existing products, add new ones. Preserves all manually edited fields (purity, batch #, labels, etc.).
+                Update quantities + auto-adjust labeled counts (labeled tracks with quantity changes). Preserves all manually edited fields (purity, batch #, etc.).
               </div>
             </div>
           </label>
