@@ -196,7 +196,6 @@ export default function PickListScanner({ peptides, onRefresh }) {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handleFileChange}
             className="hidden"
           />
