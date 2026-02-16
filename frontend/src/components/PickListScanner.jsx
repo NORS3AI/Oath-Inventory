@@ -1,20 +1,18 @@
 import { useState, useRef } from 'react';
-import { Camera, ScanLine, FileText, Plus, Trash2, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
-// Template images will be imported when available
-// import templateAImage from '../assets/templates/template-a.jpg';
+import { Camera, ScanLine, FileText, Plus, Trash2, Check, AlertCircle, ChevronDown, ChevronUp, X } from 'lucide-react';
+import Tesseract from 'tesseract.js';
+import db from '../lib/db';
 
 /**
- * Pick List Scanner - Skeleton Preview
+ * Pick List Scanner - OCR-Powered Inventory Deduction
  *
- * This component will allow users to photograph paper pick lists
- * and use OCR to extract product names and quantities, automatically
- * deducting from labeled inventory counts.
+ * Photograph paper pick lists and let OCR automatically read product names
+ * and quantities. The system aggregates totals across all scanned sheets
+ * and deducts from labeled inventory in one tap.
  *
  * Two template modes:
  *   Template A: Structured pick list (table/grid format)
  *   Template B: Large text format with product images
- *
- * STATUS: Skeleton UI only — OCR integration pending template samples
  */
 
 export default function PickListScanner({ peptides, onRefresh }) {
@@ -22,33 +20,172 @@ export default function PickListScanner({ peptides, onRefresh }) {
   const [scannedItems, setScannedItems] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [ocrProgress, setOcrProgress] = useState(0);
   const fileInputRef = useRef(null);
 
-  // Placeholder — will be replaced with real OCR processing
   const handleCapture = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e) => {
+  // Parse OCR text to extract product names and quantities
+  const parseOCRText = (text) => {
+    const items = [];
+    const lines = text.split('\n').filter(line => line.trim());
+
+    // Look for patterns like:
+    // "Product Name ... 5" or "Product Name x5" or "5 Product Name"
+    // Also handle multi-word product names
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Try to extract quantity and product name
+      // Pattern 1: "Product Name ... 5" or "Product Name 5"
+      let match = line.match(/^(.+?)\s+[.:x×]?\s*(\d+)\s*$/i);
+      if (!match) {
+        // Pattern 2: "5 Product Name" or "x5 Product Name"
+        match = line.match(/^[x×]?\s*(\d+)\s+(.+)$/i);
+        if (match) {
+          const quantity = parseInt(match[1]);
+          const productText = match[2].trim();
+          if (quantity > 0) {
+            items.push({ text: productText, quantity });
+          }
+        }
+      } else {
+        const productText = match[1].trim();
+        const quantity = parseInt(match[2]);
+        if (quantity > 0) {
+          items.push({ text: productText, quantity });
+        }
+      }
+    }
+
+    return items;
+  };
+
+  // Match extracted text against peptide inventory
+  const matchProducts = (extractedItems) => {
+    const matched = [];
+
+    for (const item of extractedItems) {
+      const searchText = item.text.toLowerCase();
+
+      // Try to find matching peptide
+      const peptide = peptides.find(p => {
+        const nameMatch = p.peptideName?.toLowerCase().includes(searchText) ||
+                         searchText.includes(p.peptideName?.toLowerCase());
+        const idMatch = p.peptideId?.toLowerCase().includes(searchText) ||
+                       searchText.includes(p.peptideId?.toLowerCase());
+        const nicknameMatch = p.nickname?.toLowerCase().includes(searchText) ||
+                             searchText.includes(p.nickname?.toLowerCase());
+        return nameMatch || idMatch || nicknameMatch;
+      });
+
+      if (peptide) {
+        matched.push({
+          productId: peptide.peptideId,
+          productName: peptide.nickname || peptide.peptideName || peptide.peptideId,
+          quantity: item.quantity,
+          extractedText: item.text
+        });
+      } else {
+        // Keep unmatched items for manual review
+        matched.push({
+          productId: 'UNMATCHED',
+          productName: item.text,
+          quantity: item.quantity,
+          extractedText: item.text,
+          unmatched: true
+        });
+      }
+    }
+
+    return matched;
+  };
+
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // TODO: Send image to OCR engine, parse results based on selected template
-    // For now, show a placeholder state
+
+    // Create image preview
+    const imageUrl = URL.createObjectURL(file);
+    setUploadedImage(imageUrl);
     setScanning(true);
-    setTimeout(() => {
+    setOcrProgress(0);
+
+    try {
+      // Run OCR with Tesseract.js
+      const result = await Tesseract.recognize(
+        file,
+        'eng',
+        {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              setOcrProgress(Math.round(m.progress * 100));
+            }
+          }
+        }
+      );
+
+      // Parse OCR text
+      const extractedItems = parseOCRText(result.data.text);
+
+      // Match against inventory
+      const matchedItems = matchProducts(extractedItems);
+
+      // Add to scanned items (aggregate duplicates)
+      setScannedItems(prev => {
+        const updated = [...prev];
+        for (const item of matchedItems) {
+          const existing = updated.find(i => i.productId === item.productId);
+          if (existing) {
+            existing.quantity += item.quantity;
+          } else {
+            updated.push(item);
+          }
+        }
+        return updated;
+      });
+
+    } catch (error) {
+      console.error('OCR failed:', error);
+      alert('Failed to scan image. Please try again.');
+    } finally {
       setScanning(false);
-      // Placeholder: no items extracted yet
-    }, 1500);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+      setOcrProgress(0);
+      setUploadedImage(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleRemoveItem = (index) => {
     setScannedItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleApplyDeductions = () => {
-    // TODO: For each scanned item, deduct quantity from labeled count
-    // await db.peptides.update(peptideId, { labeledCount: currentLabeled - qty })
+  const handleApplyDeductions = async () => {
+    try {
+      for (const item of scannedItems) {
+        if (item.unmatched) continue; // Skip unmatched items
+
+        const peptide = await db.peptides.get(item.productId);
+        if (peptide) {
+          const currentLabeled = peptide.labeledCount || 0;
+          const newLabeled = Math.max(0, currentLabeled - item.quantity);
+          await db.peptides.update(item.productId, { labeledCount: newLabeled });
+        }
+      }
+
+      // Clear scanned items and refresh
+      setScannedItems([]);
+      if (onRefresh) await onRefresh();
+
+      alert(`Successfully deducted ${scannedItems.filter(i => !i.unmatched).length} products from labeled inventory!`);
+    } catch (error) {
+      console.error('Failed to apply deductions:', error);
+      alert('Failed to apply deductions. Please try again.');
+    }
   };
 
   const totalItems = scannedItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -61,8 +198,8 @@ export default function PickListScanner({ peptides, onRefresh }) {
         <div className="flex items-center gap-3 mb-2">
           <ScanLine className="w-7 h-7" />
           <h2 className="text-xl font-bold">Pick List Scanner</h2>
-          <span className="px-2 py-0.5 bg-white/20 backdrop-blur rounded-full text-xs font-semibold uppercase tracking-wide">
-            Coming Soon
+          <span className="px-2 py-0.5 bg-green-500/90 backdrop-blur rounded-full text-xs font-semibold uppercase tracking-wide">
+            Live OCR
           </span>
         </div>
         <p className="text-white/80 text-sm max-w-2xl">
@@ -194,7 +331,7 @@ export default function PickListScanner({ peptides, onRefresh }) {
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Scan Pick Lists</h3>
         <div
           className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors"
-          onClick={handleCapture}
+          onClick={!scanning ? handleCapture : undefined}
         >
           <input
             ref={fileInputRef}
@@ -205,9 +342,25 @@ export default function PickListScanner({ peptides, onRefresh }) {
           />
           {scanning ? (
             <>
+              {uploadedImage && (
+                <div className="mb-4 max-w-sm mx-auto">
+                  <img src={uploadedImage} alt="Scanning..." className="w-full rounded-lg shadow-md" />
+                </div>
+              )}
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mb-4"></div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Scanning pick list...</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Reading text from image...</p>
+              {ocrProgress > 0 && (
+                <div className="mt-3 max-w-xs mx-auto">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-indigo-600 dark:bg-indigo-400 h-2 rounded-full transition-all"
+                      style={{ width: `${ocrProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{ocrProgress}%</p>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 Using Template {template === 'structured' ? 'A (Structured)' : 'B (Visual)'}
               </p>
             </>
@@ -253,14 +406,41 @@ export default function PickListScanner({ peptides, onRefresh }) {
             {scannedItems.map((item, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                className={`flex items-center justify-between px-4 py-3 rounded-lg ${
+                  item.unmatched
+                    ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                    : 'bg-gray-50 dark:bg-gray-700/50'
+                }`}
               >
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{item.productName}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.productId}</p>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-medium ${
+                      item.unmatched
+                        ? 'text-red-900 dark:text-red-200'
+                        : 'text-gray-900 dark:text-white'
+                    }`}>
+                      {item.productName}
+                    </p>
+                    {item.unmatched && (
+                      <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs rounded-full font-medium">
+                        No Match
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-xs ${
+                    item.unmatched
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {item.unmatched ? `OCR: "${item.extractedText}"` : item.productId}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                  <span className={`text-sm font-bold ${
+                    item.unmatched
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-indigo-600 dark:text-indigo-400'
+                  }`}>
                     x{item.quantity}
                   </span>
                   <button
@@ -297,21 +477,21 @@ export default function PickListScanner({ peptides, onRefresh }) {
       </div>
 
       {/* How It Works */}
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">How This Will Work</h4>
-            <ol className="text-sm text-amber-800 dark:text-amber-300 space-y-1 list-decimal list-inside">
+            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">How It Works</h4>
+            <ol className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-decimal list-inside">
               <li>Select your pick list template (A or B)</li>
               <li>Photograph each pick list sheet — scan as many as needed</li>
               <li>OCR reads product names and quantities from each photo</li>
               <li>The system aggregates totals across all scanned sheets</li>
-              <li>Review the running tally, correct any OCR mistakes</li>
+              <li>Review the running tally, remove unmatched items or correct quantities</li>
               <li>Tap "Apply" to deduct from labeled inventory counts</li>
             </ol>
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 italic">
-              OCR integration pending — template samples needed to calibrate recognition.
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-3 italic">
+              ✓ OCR is now live using Tesseract.js. Unmatched items are highlighted in red for manual review.
             </p>
           </div>
         </div>
