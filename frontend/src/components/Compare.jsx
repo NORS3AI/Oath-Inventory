@@ -12,6 +12,8 @@ const DEFAULT_COLUMNS = [
   { id: 'oldQty', label: 'Older Qty' },
   { id: 'newQty', label: 'Newer Qty' },
   { id: 'change', label: 'Change' },
+  { id: 'oldManualLabels', label: 'Older Manual Labels' },
+  { id: 'newManualLabels', label: 'Newer Manual Labels' },
   { id: 'status', label: 'Status' }
 ];
 
@@ -163,6 +165,8 @@ export default function Compare({ peptides }) {
           name: newItem.nickname || newItem.peptideName || '',
           oldQty: oldItem.quantity,
           newQty: newItem.quantity,
+          oldManualLabels: oldItem.manualLabels || 0,
+          newManualLabels: newItem.manualLabels || 0,
           change,
           type: change < 0 ? 'decreased' : change > 0 ? 'increased' : 'unchanged'
         });
@@ -174,6 +178,8 @@ export default function Compare({ peptides }) {
           name: newItem.nickname || newItem.peptideName || '',
           oldQty: null,
           newQty: newItem.quantity,
+          oldManualLabels: 0,
+          newManualLabels: newItem.manualLabels || 0,
           change: newItem.quantity,
           type: 'new'
         });
@@ -189,6 +195,8 @@ export default function Compare({ peptides }) {
           name: oldItem.nickname || oldItem.peptideName || '',
           oldQty: oldItem.quantity,
           newQty: null,
+          oldManualLabels: oldItem.manualLabels || 0,
+          newManualLabels: 0,
           change: -oldItem.quantity,
           type: 'removed'
         });
@@ -554,6 +562,16 @@ export default function Compare({ peptides }) {
                               if (col.id === 'newQty') return (
                                 <td key={col.id} className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
                                   {row.newQty !== null ? row.newQty : '-'}
+                                </td>
+                              );
+                              if (col.id === 'oldManualLabels') return (
+                                <td key={col.id} className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
+                                  {row.oldManualLabels !== null ? row.oldManualLabels : '-'}
+                                </td>
+                              );
+                              if (col.id === 'newManualLabels') return (
+                                <td key={col.id} className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
+                                  {row.newManualLabels !== null ? row.newManualLabels : '-'}
                                 </td>
                               );
                               if (col.id === 'change') return (

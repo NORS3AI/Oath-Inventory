@@ -11,6 +11,7 @@ const DEFAULT_COLUMNS = [
   { id: 'batchNumber', label: 'Batch', field: 'batchNumber', sortable: true },
   { id: 'quantity', label: 'Quantity', field: 'quantity', sortable: true },
   { id: 'labeled', label: 'Labeled', field: 'labeledCount', sortable: true },
+  { id: 'manualLabels', label: 'Manual Labels', field: 'manualLabels', sortable: true },
   { id: 'status', label: 'Status', field: 'status', sortable: true },
   { id: 'actions', label: 'Actions', field: 'actions', sortable: false }
 ];
@@ -634,6 +635,8 @@ function ProductRow({ peptide, onMarkLabeled, visibleColumns }) {
             )}
           </div>
         );
+      case 'manualLabels':
+        return <span className="text-sm text-gray-900 dark:text-white font-medium">{peptide.manualLabels || 0}</span>;
       case 'status':
         return getStatusBadge();
       case 'actions':
