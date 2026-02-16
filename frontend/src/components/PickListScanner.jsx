@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Camera, ScanLine, FileText, Plus, Trash2, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
-// Import template images
-import templateAImage from '../assets/templates/template-a.jpg';
+// Template images will be imported when available
+// import templateAImage from '../assets/templates/template-a.jpg';
 
 /**
  * Pick List Scanner - Skeleton Preview
@@ -157,12 +157,16 @@ export default function PickListScanner({ peptides, onRefresh }) {
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   This is an example of Template A - the structured pick list format with table/grid layout.
                 </p>
-                <div className="border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
-                  <img
-                    src={templateAImage}
-                    alt="Template A - Structured Pick List Example"
-                    className="w-full h-auto"
-                  />
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900 p-8">
+                  <div className="text-center">
+                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      Template image will be added here
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      Upload template-a.jpg to frontend/src/assets/templates/
+                    </p>
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-500 italic">
                   OCR will extract product names, net weights, and quantities from this format.
