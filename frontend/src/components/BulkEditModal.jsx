@@ -19,6 +19,7 @@ export default function BulkEditModal({ isOpen, onClose, peptides, onSave }) {
     { id: 'nickname', label: 'Nickname', type: 'text', width: 'w-40' },
     { id: 'quantity', label: 'Qty', type: 'number', width: 'w-20' },
     { id: 'labeledCount', label: 'Labeled', type: 'number', width: 'w-20' },
+    { id: 'manualLabels', label: 'Manual Labels', type: 'number', width: 'w-24' },
     { id: 'batchNumber', label: 'Batch #', type: 'text', width: 'w-32' },
     { id: 'purity', label: 'Purity', type: 'text', width: 'w-24' },
     { id: 'netWeight', label: 'Net Weight', type: 'text', width: 'w-24' },

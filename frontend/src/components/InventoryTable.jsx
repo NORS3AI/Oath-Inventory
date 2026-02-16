@@ -18,6 +18,7 @@ const DEFAULT_COLUMNS = [
   { id: 'peptideName', label: 'SKU', field: 'peptideName', sortable: true },
   { id: 'quantity', label: 'Quantity', field: 'quantity', sortable: true },
   { id: 'labeledCount', label: 'Labeled', field: 'labeledCount', sortable: true },
+  { id: 'manualLabels', label: 'Manual Labels', field: 'manualLabels', sortable: true },
   { id: 'offBooks', label: 'Off Books', field: 'offBooks', sortable: true },
   { id: 'status', label: 'Status', field: 'status', sortable: true },
   { id: 'batchNumber', label: 'Batch #', field: 'batchNumber', sortable: true },
@@ -390,6 +391,15 @@ export default function InventoryTable({ peptides, allPeptides, onRefresh, thres
           peptide={peptide}
           onSave={handleInlineLabeledSave}
         />
+      );
+    }
+
+    if (column.id === 'manualLabels') {
+      const manualLabels = peptide.manualLabels || 0;
+      return (
+        <span className="text-gray-900 dark:text-white font-medium">
+          {manualLabels}
+        </span>
       );
     }
 
