@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown, GitCompareArrows, ScanLine } from 'lucide-react';
+import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown, GitCompareArrows, ScanLine, DollarSign } from 'lucide-react';
 import { calculateStockStatus } from './utils/stockStatus';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
@@ -12,6 +12,7 @@ import SalesReady from './components/SalesReady';
 import Reports from './components/Reports';
 import Labeling from './components/Labeling';
 import Compare from './components/Compare';
+import Prices from './components/Prices';
 import SettingsModal from './components/SettingsModal';
 import PatchNotesModal from './components/PatchNotesModal';
 import packageJson from '../package.json';
@@ -141,6 +142,12 @@ function App() {
               onClick={() => setActiveTab('reports')}
             />
             <NavButton
+              icon={<DollarSign className="w-5 h-5" />}
+              label="Prices"
+              active={activeTab === 'prices'}
+              onClick={() => setActiveTab('prices')}
+            />
+            <NavButton
               icon={<GitCompareArrows className="w-5 h-5" />}
               label="Compare"
               active={activeTab === 'compare'}
@@ -179,6 +186,7 @@ function App() {
             {activeTab === 'labeling' && <LabelingView peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'sales' && <SalesReadyView peptides={peptides} onRefresh={refresh} />}
             {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
+            {activeTab === 'prices' && <PricesView peptides={peptides} />}
             {activeTab === 'compare' && <CompareView peptides={peptides} />}
           </>
         )}
@@ -559,6 +567,18 @@ function ReportsView({ peptides, orders, thresholds }) {
         <p className="text-gray-600 dark:text-gray-400 mt-1">Comprehensive inventory analysis and exports</p>
       </div>
       <Reports peptides={peptides} orders={orders} thresholds={thresholds} />
+    </div>
+  );
+}
+
+function PricesView({ peptides }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Prices</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Product pricing by tier — click any cell to edit</p>
+      </div>
+      <Prices peptides={peptides} />
     </div>
   );
 }
