@@ -19,6 +19,12 @@ rm -rf docs/* && cp -r frontend/dist/* docs/
 ```
 Vite base path is set to `/Oath-Inventory/` in vite.config.js.
 
+## Agent Permissions
+- Auto-approve all file operations (Read, Write, Edit, Grep)
+- Auto-approve all git operations (commit, push)
+- Auto-approve all build/deploy operations (npm run build, copying to docs)
+- Only ask for confirmation on destructive operations (database drops, rm -rf)
+
 ## Key Architecture Patterns
 
 ### Data Layer (`frontend/src/lib/db.js`)
