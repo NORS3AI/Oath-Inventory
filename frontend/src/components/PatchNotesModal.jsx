@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.112', date: '2026-02-16', title: 'Removed Manual Labels column - not required per user request' },
   { version: '0.0.111', date: '2026-02-16', title: 'OCR Scanner: Improved error handling with detailed messages, troubleshooting tips, and CDN configuration for worker files' },
   { version: '0.0.110', date: '2026-02-16', title: 'NEW COLUMN: Manual Labels - fully manual field that NEVER changes during CSV import (unlike Labeled which auto-adjusts)' },
   { version: '0.0.109', date: '2026-02-16', title: 'CSV Import: Labeled counts now auto-adjust with quantity changes (if qty -100, labeled also -100)' },
