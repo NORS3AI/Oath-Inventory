@@ -43,7 +43,7 @@ export default function Prices({ peptides }) {
     ).values()
   ).sort((a, b) => a.label.localeCompare(b.label));
 
-  const cols = ['Axx26', 'Bxx26', 'Cxx26'];
+  const cols = ['Price', 'Axx26', 'Bxx26', 'Cxx26'];
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
@@ -68,19 +68,19 @@ export default function Prices({ peptides }) {
             {products.length === 0 ? (
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={5}
                   className="px-4 py-12 text-center text-gray-500 dark:text-gray-400"
                 >
                   No products found. Import inventory data first.
                 </td>
               </tr>
             ) : (
-              products.map((product, idx) => {
+              products.map((product) => {
                 const rowPrices = prices[product.key] || {};
                 return (
                   <tr
                     key={product.key}
-                    className={idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-750'}
+                    className="border-b border-gray-100 dark:border-gray-700"
                   >
                     <td className="px-4 py-2">
                       <div className="font-medium text-gray-900 dark:text-white">{product.label}</div>
