@@ -14,7 +14,6 @@ const DEFAULT_COLUMNS = [
   { id: 'purity', label: 'Purity', field: 'purity', sortable: true },
   { id: 'netWeight', label: 'Net Weight', field: 'netWeight', sortable: true },
   { id: 'label', label: 'Label', field: 'isLabeled', sortable: true },
-  { id: 'manualLabels', label: 'Manual Labels', field: 'manualLabels', sortable: true },
   { id: 'missing', label: 'Missing', field: 'missing', sortable: false }
 ];
 
@@ -264,9 +263,6 @@ export default function SalesReady({ peptides, onRefresh }) {
       );
     }
 
-    if (column.id === 'manualLabels') {
-      return <span className="text-gray-900 dark:text-white font-medium">{peptide.manualLabels || 0}</span>;
-    }
 
     if (column.id === 'missing') {
       return readiness.missing.length > 0 ? (
