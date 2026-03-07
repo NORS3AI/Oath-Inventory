@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { List, FileText } from 'lucide-react';
+import { List, FileText, ArrowUpDown } from 'lucide-react';
 import { db } from '../lib/db';
 import ColumnReorderModal from './ColumnReorderModal';
 import InvoicePDFImport from './InvoicePDFImport';
@@ -21,6 +21,8 @@ export default function Prices({ peptides }) {
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sortField, setSortField] = useState('product');
+  const [sortDirection, setSortDirection] = useState('asc');
 
   // Load saved prices from IndexedDB
   useEffect(() => {
@@ -99,15 +101,61 @@ export default function Prices({ peptides }) {
     }));
   }, []);
 
-  // Deduplicate products by peptideId, sorted alphabetically by display name
-  const products = Array.from(
-    new Map(
-      peptides.map(p => [
-        p.peptideId,
-        { key: p.peptideId, label: p.nickname || p.peptideId, sub: p.nickname ? p.peptideId : (p.peptideName || '') }
-      ])
-    ).values()
-  ).sort((a, b) => a.label.localeCompare(b.label));
+  // Handle sorting
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Deduplicate products by peptideId, sorted by current sort field
+  const products = useMemo(() => {
+    const deduped = Array.from(
+      new Map(
+        peptides.map(p => [
+          p.peptideId,
+          { key: p.peptideId, label: p.nickname || p.peptideId, sub: p.nickname ? p.peptideId : (p.peptideName || '') }
+        ])
+      ).values()
+    );
+
+    // Sort by selected field
+    return deduped.sort((a, b) => {
+      let aVal, bVal;
+
+      if (sortField === 'product') {
+        aVal = a.label;
+        bVal = b.label;
+      } else {
+        const colKey = getColumnKey(sortField);
+        aVal = prices[a.key]?.[colKey];
+        bVal = prices[b.key]?.[colKey];
+      }
+
+      // Handle string sorting
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+      // Convert to numbers if both are numeric
+      const aNum = parseFloat(aVal);
+      const bNum = parseFloat(bVal);
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        aVal = aNum;
+        bVal = bNum;
+      }
+
+      // Handle null/undefined/empty values (sort to bottom)
+      if (aVal === undefined || aVal === null || aVal === '') aVal = sortDirection === 'asc' ? Infinity : -Infinity;
+      if (bVal === undefined || bVal === null || bVal === '') bVal = sortDirection === 'asc' ? Infinity : -Infinity;
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [peptides, sortField, sortDirection, prices]);
 
   // Map column IDs to their data keys
   const getColumnKey = (columnId) => {
@@ -150,11 +198,15 @@ export default function Prices({ peptides }) {
                 {visibleColumns.map(column => (
                   <th
                     key={column.id}
-                    className={`px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider
-                      ${column.id === 'product' ? 'text-left w-48' : 'text-center w-24'}
+                    onClick={() => handleSort(column.id)}
+                    className={`px-2 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors
+                      ${column.id === 'product' ? 'w-32' : 'w-28'}
                     `}
                   >
-                    {column.label}
+                    <div className="flex items-center gap-1">
+                      {column.label}
+                      <ArrowUpDown className={`h-3.5 w-3.5 ${sortField === column.id ? 'text-blue-500' : 'text-gray-400'}`} />
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -180,8 +232,8 @@ export default function Prices({ peptides }) {
                       {visibleColumns.map(column => {
                         if (column.id === 'product') {
                           return (
-                            <td key={column.id} className="px-3 py-2 w-48">
-                              <div className="font-medium text-gray-900 dark:text-white truncate">{product.label}</div>
+                            <td key={column.id} className="px-2 py-2 w-32">
+                              <div className="font-medium text-gray-900 dark:text-white truncate text-sm">{product.label}</div>
                               {product.sub && product.sub !== product.label && (
                                 <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{product.sub}</div>
                               )}
@@ -190,7 +242,7 @@ export default function Prices({ peptides }) {
                         } else {
                           const colKey = getColumnKey(column.id);
                           return (
-                            <td key={column.id} className="px-1.5 py-1.5 text-center w-24">
+                            <td key={column.id} className="px-1 py-1.5 w-28">
                               <input
                                 type="text"
                                 inputMode="decimal"
@@ -198,7 +250,7 @@ export default function Prices({ peptides }) {
                                 onChange={e => handleChange(product.key, colKey, e.target.value)}
                                 onFocus={e => e.target.select()}
                                 placeholder="—"
-                                className="w-full text-center px-1.5 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
+                                className="w-full text-left px-1.5 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
                               />
                             </td>
                           );

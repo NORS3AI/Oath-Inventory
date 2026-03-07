@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.117', date: '2026-03-07', title: 'Prices: Add sortable columns (click headers to sort asc/desc), left-align all columns, ultra-compact layout (product=128px, prices=112px)' },
   { version: '0.0.116', date: '2026-03-07', title: 'Performance: Optimize PDF invoice import (5-10x faster), tighten Prices table columns for compact view' },
   { version: '0.0.115', date: '2026-03-07', title: 'Backup & Restore: Complete data export/import in Settings (Inventory, Prices, Snapshots, Labels, all data) - protect against cache clears' },
   { version: '0.0.114', date: '2026-03-07', title: 'PDF Invoice Import: Upload invoices, auto-match products with fuzzy matching, choose price column (Price/Axx26/Bxx26/Cxx26)' },
