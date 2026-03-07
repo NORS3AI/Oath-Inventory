@@ -175,9 +175,71 @@ export default function Prices({ peptides }) {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-2 print:hidden">
+    <>
+      {/* Print Styles */}
+      <style>{`
+        @media print {
+          @page {
+            size: auto;
+            margin: 0.5in;
+          }
+
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          /* Remove scroll container constraints */
+          .overflow-x-auto {
+            overflow: visible !important;
+          }
+
+          /* Full-width table for print */
+          table {
+            width: 100% !important;
+            page-break-inside: auto;
+          }
+
+          thead {
+            display: table-header-group;
+          }
+
+          tbody {
+            display: table-row-group;
+          }
+
+          tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+          }
+
+          /* Prevent inputs from looking weird in print */
+          input {
+            border: 1px solid #e5e7eb !important;
+            background: white !important;
+            color: black !important;
+            -webkit-appearance: none;
+            appearance: none;
+          }
+
+          /* Clean header styling for print */
+          th {
+            background-color: #f3f4f6 !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
+            padding: 8px 6px !important;
+          }
+
+          td {
+            border: 1px solid #e5e7eb !important;
+            padding: 6px 4px !important;
+          }
+        }
+      `}</style>
+
+      <div className="space-y-4">
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-2 print:hidden">
         <button
           onClick={() => setShowImportModal(true)}
           className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -309,6 +371,7 @@ export default function Prices({ peptides }) {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
