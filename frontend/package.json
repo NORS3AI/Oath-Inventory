@@ -25,6 +25,7 @@
     "localforage": "^1.10.0",
     "lucide-react": "^0.563.0",
     "papaparse": "^5.5.3",
+    "pdfjs-dist": "^5.5.207",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^2.15.0",

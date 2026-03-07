@@ -1,0 +1,431 @@
+import { useState, useCallback, useMemo } from 'react';
+import { Upload, FileText, Check, X, AlertCircle } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+import { db } from '../lib/db';
+import { useToast } from './Toast';
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+export default function InvoicePDFImport({ peptides, onImportComplete }) {
+  const [file, setFile] = useState(null);
+  const [extractedItems, setExtractedItems] = useState([]);
+  const [mappings, setMappings] = useState({});
+  const [targetColumn, setTargetColumn] = useState('price');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [step, setStep] = useState('upload'); // 'upload', 'mapping', 'preview'
+  const { success, error: showError } = useToast();
+
+  // Calculate similarity between two strings (simple Levenshtein-like)
+  const similarity = (s1, s2) => {
+    const longer = s1.length > s2.length ? s1 : s2;
+    const shorter = s1.length > s2.length ? s2 : s1;
+
+    if (longer.length === 0) return 1.0;
+
+    const editDistance = (s1, s2) => {
+      s1 = s1.toLowerCase();
+      s2 = s2.toLowerCase();
+      const costs = [];
+      for (let i = 0; i <= s1.length; i++) {
+        let lastValue = i;
+        for (let j = 0; j <= s2.length; j++) {
+          if (i === 0) {
+            costs[j] = j;
+          } else if (j > 0) {
+            let newValue = costs[j - 1];
+            if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+              newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+            }
+            costs[j - 1] = lastValue;
+            lastValue = newValue;
+          }
+        }
+        if (i > 0) costs[s2.length] = lastValue;
+      }
+      return costs[s2.length];
+    };
+
+    return (longer.length - editDistance(longer, shorter)) / longer.length;
+  };
+
+  // Find best matching product for an activity name
+  const findBestMatch = useCallback((activityName) => {
+    let bestMatch = null;
+    let bestScore = 0;
+
+    // Deduplicate products by peptideId
+    const uniqueProducts = Array.from(
+      new Map(peptides.map(p => [p.peptideId, p])).values()
+    );
+
+    for (const product of uniqueProducts) {
+      // Check against peptideId, peptideName, and nickname
+      const scores = [
+        similarity(activityName, product.peptideId || ''),
+        similarity(activityName, product.peptideName || ''),
+        similarity(activityName, product.nickname || '')
+      ];
+
+      const maxScore = Math.max(...scores);
+
+      if (maxScore > bestScore) {
+        bestScore = maxScore;
+        bestMatch = product;
+      }
+    }
+
+    return { product: bestMatch, confidence: bestScore };
+  }, [peptides]);
+
+  // Parse PDF and extract Activity + Rate
+  const parsePDF = async (file) => {
+    setIsProcessing(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      let fullText = '';
+
+      // Extract text from all pages
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n';
+      }
+
+      // Parse the text to find Activity and Rate pairs
+      const items = parseInvoiceText(fullText);
+
+      if (items.length === 0) {
+        showError('No pricing data found in PDF. Please check the format.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Auto-match products
+      const itemsWithMatches = items.map(item => {
+        const { product, confidence } = findBestMatch(item.activity);
+        return {
+          ...item,
+          suggestedProduct: product,
+          confidence: confidence,
+          selectedProduct: confidence > 0.7 ? product : null // Auto-select if high confidence
+        };
+      });
+
+      setExtractedItems(itemsWithMatches);
+
+      // Initialize mappings
+      const initialMappings = {};
+      itemsWithMatches.forEach((item, idx) => {
+        if (item.selectedProduct) {
+          initialMappings[idx] = item.selectedProduct.peptideId;
+        }
+      });
+      setMappings(initialMappings);
+
+      setStep('mapping');
+      success(`Extracted ${items.length} items from PDF`);
+    } catch (err) {
+      console.error('PDF parsing error:', err);
+      showError('Failed to parse PDF. Please check the file format.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Parse invoice text to extract Activity and Rate
+  const parseInvoiceText = (text) => {
+    const items = [];
+    const lines = text.split('\n');
+
+    // Simple pattern matching for common invoice formats
+    // Looking for patterns like: "Activity Name ... $123.45" or "Activity Name 123.45"
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      // Skip empty lines and headers
+      if (!line || line.toLowerCase().includes('activity') || line.toLowerCase().includes('total')) {
+        continue;
+      }
+
+      // Try to match: text followed by a price
+      const priceMatch = line.match(/^(.+?)\s+\$?(\d+\.?\d*)\s*$/);
+      if (priceMatch) {
+        const activity = priceMatch[1].trim();
+        const rate = parseFloat(priceMatch[2]);
+
+        if (activity && !isNaN(rate)) {
+          items.push({ activity, rate });
+        }
+      }
+    }
+
+    return items;
+  };
+
+  // Handle file upload
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile && selectedFile.type === 'application/pdf') {
+      setFile(selectedFile);
+      parsePDF(selectedFile);
+    } else {
+      showError('Please select a PDF file');
+    }
+  };
+
+  // Handle product mapping change
+  const handleMappingChange = (itemIndex, peptideId) => {
+    setMappings(prev => ({
+      ...prev,
+      [itemIndex]: peptideId
+    }));
+  };
+
+  // Get deduplicated products for dropdown
+  const uniqueProducts = useMemo(() => {
+    return Array.from(
+      new Map(
+        peptides.map(p => [
+          p.peptideId,
+          {
+            peptideId: p.peptideId,
+            label: p.nickname || p.peptideId,
+            sub: p.nickname ? p.peptideId : (p.peptideName || '')
+          }
+        ])
+      ).values()
+    ).sort((a, b) => a.label.localeCompare(b.label));
+  }, [peptides]);
+
+  // Apply the mappings and update prices
+  const handleApply = async () => {
+    setIsProcessing(true);
+    try {
+      // Load current price data
+      const currentPrices = await db.settings.get('priceData') || {};
+
+      // Get column key for selected target
+      const columnKey = {
+        'price': 'Price',
+        'axx26': 'Axx26',
+        'bxx26': 'Bxx26',
+        'cxx26': 'Cxx26'
+      }[targetColumn];
+
+      // Apply mappings
+      let updatedCount = 0;
+      extractedItems.forEach((item, idx) => {
+        const peptideId = mappings[idx];
+        if (peptideId) {
+          if (!currentPrices[peptideId]) {
+            currentPrices[peptideId] = {};
+          }
+          currentPrices[peptideId][columnKey] = item.rate.toString();
+          updatedCount++;
+        }
+      });
+
+      // Save updated prices
+      await db.settings.set('priceData', currentPrices);
+
+      success(`Imported ${updatedCount} prices into ${columnKey} column`);
+
+      // Reset and notify parent
+      setFile(null);
+      setExtractedItems([]);
+      setMappings({});
+      setStep('upload');
+
+      if (onImportComplete) {
+        onImportComplete();
+      }
+    } catch (err) {
+      console.error('Import error:', err);
+      showError('Failed to import prices');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Cancel and reset
+  const handleCancel = () => {
+    setFile(null);
+    setExtractedItems([]);
+    setMappings({});
+    setStep('upload');
+  };
+
+  // Get confidence badge color
+  const getConfidenceBadge = (confidence) => {
+    if (confidence >= 0.8) return { color: 'green', label: 'High' };
+    if (confidence >= 0.5) return { color: 'yellow', label: 'Medium' };
+    return { color: 'red', label: 'Low' };
+  };
+
+  const mappedCount = Object.keys(mappings).filter(k => mappings[k]).length;
+  const unmappedCount = extractedItems.length - mappedCount;
+
+  return (
+    <div className="space-y-6">
+      {/* Step 1: Upload */}
+      {step === 'upload' && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Import Invoice PDF
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Upload a PDF invoice containing product names (Activity) and prices (Rate).
+            The system will attempt to match products automatically.
+          </p>
+
+          <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <Upload className="w-12 h-12 mb-4 text-gray-400 dark:text-gray-500" />
+              <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                <span className="font-semibold">Click to upload</span> or drag and drop
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">PDF files only</p>
+            </div>
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf"
+              onChange={handleFileChange}
+              disabled={isProcessing}
+            />
+          </label>
+
+          {isProcessing && (
+            <div className="mt-4 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Processing PDF...</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 2: Mapping */}
+      {step === 'mapping' && extractedItems.length > 0 && (
+        <div className="space-y-4">
+          {/* Column Selector */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Import prices into column:
+            </label>
+            <select
+              value={targetColumn}
+              onChange={(e) => setTargetColumn(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="price">Price</option>
+              <option value="axx26">Axx26</option>
+              <option value="bxx26">Bxx26</option>
+              <option value="cxx26">Cxx26</option>
+            </select>
+          </div>
+
+          {/* Status Summary */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {mappedCount} mapped
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {unmappedCount} unmapped
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleApply}
+                  disabled={mappedCount === 0 || isProcessing}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isProcessing ? 'Importing...' : `Import ${mappedCount} Price${mappedCount !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Mapping Table */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                      Activity (from PDF)
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                      Match to Product
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                      Rate
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                      Confidence
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {extractedItems.map((item, idx) => {
+                    const badge = getConfidenceBadge(item.confidence);
+                    return (
+                      <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                          {item.activity}
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={mappings[idx] || ''}
+                            onChange={(e) => handleMappingChange(idx, e.target.value)}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">-- Select Product --</option>
+                            {uniqueProducts.map(product => (
+                              <option key={product.peptideId} value={product.peptideId}>
+                                {product.label} {product.sub && `(${product.sub})`}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
+                          ${item.rate.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                            ${badge.color === 'green' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : ''}
+                            ${badge.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200' : ''}
+                            ${badge.color === 'red' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' : ''}
+                          `}>
+                            {badge.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

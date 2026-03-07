@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { List } from 'lucide-react';
+import { List, FileText } from 'lucide-react';
 import { db } from '../lib/db';
 import ColumnReorderModal from './ColumnReorderModal';
+import InvoicePDFImport from './InvoicePDFImport';
 
 // Define all available columns for the pricing table
 const DEFAULT_COLUMNS = [
@@ -18,6 +19,8 @@ export default function Prices({ peptides }) {
   const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS);
   const [hiddenColumns, setHiddenColumns] = useState([]);
   const [showReorderModal, setShowReorderModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Load saved prices from IndexedDB
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function Prices({ peptides }) {
       setLoaded(true);
     };
     load();
-  }, []);
+  }, [refreshKey]);
 
   // Save prices to IndexedDB whenever they change (after initial load)
   useEffect(() => {
@@ -80,6 +83,12 @@ export default function Prices({ peptides }) {
     return columnOrder.filter(col => !hiddenColumns.includes(col.id));
   }, [columnOrder, hiddenColumns]);
 
+  // Handle import completion
+  const handleImportComplete = () => {
+    setShowImportModal(false);
+    setRefreshKey(prev => prev + 1); // Trigger reload
+  };
+
   const handleChange = useCallback((productKey, col, value) => {
     setPrices(prev => ({
       ...prev,
@@ -114,8 +123,15 @@ export default function Prices({ peptides }) {
 
   return (
     <div className="space-y-4">
-      {/* Reorder Button */}
-      <div className="flex justify-end">
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setShowImportModal(true)}
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <FileText className="w-4 h-4" />
+          <span className="hidden sm:inline">Import Invoice</span>
+        </button>
         <button
           onClick={() => setShowReorderModal(true)}
           className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -206,6 +222,29 @@ export default function Prices({ peptides }) {
           onVisibilityChange={handleVisibilityChange}
           onClose={() => setShowReorderModal(false)}
         />
+      )}
+
+      {/* Import Invoice Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Import Invoice PDF</h2>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+            <div className="p-6">
+              <InvoicePDFImport
+                peptides={peptides}
+                onImportComplete={handleImportComplete}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
