@@ -96,53 +96,110 @@
 
 /* Print styles */
 @media print {
-  /* Hide everything except the table */
-  body * {
-    visibility: hidden;
+  /* Page setup */
+  @page {
+    margin: 0.5in;
+    size: auto;
   }
 
-  /* Show only the table and its children */
-  table, table * {
-    visibility: visible;
+  /* Reset body for print */
+  body {
+    background: white !important;
+    margin: 0;
+    padding: 0;
   }
 
-  /* Position table at top of page */
+  /* Hide everything except the prices table container */
+  body > * {
+    display: none !important;
+  }
+
+  #root {
+    display: block !important;
+  }
+
+  #root > * {
+    display: none !important;
+  }
+
+  /* Show only the main content area with the table */
+  #root > div {
+    display: block !important;
+  }
+
+  #root > div > * {
+    display: none !important;
+  }
+
+  /* Show the prices content */
+  #root > div > div {
+    display: block !important;
+  }
+
+  /* Hide action buttons explicitly */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Show and format the table */
   table {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-
-  /* Remove shadows and backgrounds */
-  .bg-white, .dark\:bg-gray-800, .bg-gray-50, .dark\:bg-gray-700 {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
     background: white !important;
     box-shadow: none !important;
+    position: static !important;
+    margin: 0 !important;
+    page-break-inside: auto !important;
   }
 
-  /* Ensure text is black */
-  * {
-    color: black !important;
+  /* Repeat table headers on each page */
+  thead {
+    display: table-header-group !important;
+    background: #f9f9f9 !important;
+    font-weight: bold !important;
+  }
+
+  tbody {
+    display: table-row-group !important;
+  }
+
+  /* Prevent page breaks inside rows */
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Clean table borders */
   th, td {
     border: 1px solid #ddd !important;
     padding: 8px !important;
+    color: black !important;
+    background: white !important;
   }
 
-  thead {
-    background: #f9f9f9 !important;
-    font-weight: bold;
+  /* Ensure text is black */
+  th, td, span, div {
+    color: black !important;
   }
 
-  /* Hide sort icons */
-  .lucide {
+  /* Hide sort icons and interactive elements */
+  .lucide, button, input {
     display: none !important;
   }
 
-  /* Fit to page */
-  @page {
-    margin: 0.5in;
+  /* Remove all backgrounds and shadows */
+  * {
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  th {
+    background: #f9f9f9 !important;
+  }
+
+  td {
+    background: white !important;
   }
 }

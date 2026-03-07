@@ -260,12 +260,18 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     const items = [];
     const lines = text.split('\n');
 
+    console.log('[PARSER] Total lines:', lines.length);
+
     // First pass: extract product names and numbers
     const productNames = [];
     const numberLines = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+
+      if (i < 5) {
+        console.log(`[PARSER] Line ${i}:`, line);
+      }
 
       // Skip empty lines, headers, footers (but NOT lines with product names)
       if (!line || line.toLowerCase().includes('activity description') ||
@@ -322,18 +328,26 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
         continue; // Don't also match single products on this line
       }
 
-      // Then match single products: "BPC-157 (5mg)" or "TB-500 (5mg)"
-      const singlePattern = /\b([A-Za-z][A-Za-z0-9\-]+\s*\([0-9.]+mg\))\b/gi;
+      // Then match single products: "BPC-157 (5mg)", "TB-500 (5mg)", "Melanotan I (10mg)", "Thymosin Alpha-1 (10mg)"
+      // Allow multi-word product names with spaces
+      const singlePattern = /([A-Za-z0-9\-]+(?:\s+[A-Za-z0-9\-]+)*\s*\([0-9.]+mg\))/gi;
       const singleMatches = line.match(singlePattern);
 
       if (singleMatches) {
         singleMatches.forEach(name => {
-          productNames.push(name.trim());
+          // Skip if it's part of a blend (already captured)
+          if (!name.toLowerCase().includes('blend')) {
+            productNames.push(name.trim());
+          }
         });
       }
     }
 
     // If we have product names and number lines separately, pair them up
+    console.log('[PARSER] Product names found:', productNames.length);
+    console.log('[PARSER] Number lines found:', numberLines.length);
+    console.log('[PARSER] Items from fullLineMatch:', items.length);
+
     if (productNames.length > 0 && numberLines.length > 0) {
       const pairsCount = Math.min(productNames.length, numberLines.length);
       for (let i = 0; i < pairsCount; i++) {
@@ -342,6 +356,12 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
           rate: numberLines[i].rate
         });
       }
+    }
+
+    console.log('[PARSER] Final items count:', items.length);
+    if (items.length > 0) {
+      console.log('[PARSER] First item:', items[0]);
+      console.log('[PARSER] Last item:', items[items.length - 1]);
     }
 
     return items;
