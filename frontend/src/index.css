@@ -93,3 +93,56 @@
     animation: slide-in 0.3s ease-out;
   }
 }
+
+/* Print styles */
+@media print {
+  /* Hide everything except the table */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the table and its children */
+  table, table * {
+    visibility: visible;
+  }
+
+  /* Position table at top of page */
+  table {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Remove shadows and backgrounds */
+  .bg-white, .dark\:bg-gray-800, .bg-gray-50, .dark\:bg-gray-700 {
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure text is black */
+  * {
+    color: black !important;
+  }
+
+  /* Clean table borders */
+  th, td {
+    border: 1px solid #ddd !important;
+    padding: 8px !important;
+  }
+
+  thead {
+    background: #f9f9f9 !important;
+    font-weight: bold;
+  }
+
+  /* Hide sort icons */
+  .lucide {
+    display: none !important;
+  }
+
+  /* Fit to page */
+  @page {
+    margin: 0.5in;
+  }
+}
