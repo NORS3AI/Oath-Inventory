@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { List, FileText, ArrowUpDown } from 'lucide-react';
+import { List, FileText, ArrowUpDown, Printer } from 'lucide-react';
 import { db } from '../lib/db';
 import ColumnReorderModal from './ColumnReorderModal';
 import InvoicePDFImport from './InvoicePDFImport';
@@ -91,6 +91,11 @@ export default function Prices({ peptides }) {
     setRefreshKey(prev => prev + 1); // Trigger reload
   };
 
+  // Handle print
+  const handlePrint = () => {
+    window.print();
+  };
+
   const handleChange = useCallback((productKey, col, value) => {
     setPrices(prev => ({
       ...prev,
@@ -172,13 +177,20 @@ export default function Prices({ peptides }) {
   return (
     <div className="space-y-4">
       {/* Action Buttons */}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 print:hidden">
         <button
           onClick={() => setShowImportModal(true)}
           className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <FileText className="w-4 h-4" />
           <span className="hidden sm:inline">Import Invoice</span>
+        </button>
+        <button
+          onClick={handlePrint}
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <Printer className="w-4 h-4" />
+          <span className="hidden sm:inline">Print</span>
         </button>
         <button
           onClick={() => setShowReorderModal(true)}
