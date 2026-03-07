@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.131', date: '2026-03-07', title: 'Parser Debug: Add console logging to diagnose "only 1 item imported" issue - check browser console (F12) after paste' },
   { version: '0.0.130', date: '2026-03-07', title: 'Print: Fix multi-page printing - table headers repeat on each page, no page breaks mid-row, proper pagination' },
   { version: '0.0.129', date: '2026-03-07', title: 'Invoice Parser: Keep blend products together - "Tesamorelin (6mg) / Ipamorelin (2mg) Blend (8mg)" stays as ONE item, not split into two' },
   { version: '0.0.128', date: '2026-03-07', title: 'Invoice Parser: Fix "Product (Xmg) 3ML Vial QTY RATE AMOUNT" format - extract product name before "3ML Vial", handle inline descriptions' },

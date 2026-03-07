@@ -260,12 +260,18 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     const items = [];
     const lines = text.split('\n');
 
+    console.log('[PARSER] Total lines:', lines.length);
+
     // First pass: extract product names and numbers
     const productNames = [];
     const numberLines = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+
+      if (i < 5) {
+        console.log(`[PARSER] Line ${i}:`, line);
+      }
 
       // Skip empty lines, headers, footers (but NOT lines with product names)
       if (!line || line.toLowerCase().includes('activity description') ||
@@ -334,6 +340,10 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     }
 
     // If we have product names and number lines separately, pair them up
+    console.log('[PARSER] Product names found:', productNames.length);
+    console.log('[PARSER] Number lines found:', numberLines.length);
+    console.log('[PARSER] Items from fullLineMatch:', items.length);
+
     if (productNames.length > 0 && numberLines.length > 0) {
       const pairsCount = Math.min(productNames.length, numberLines.length);
       for (let i = 0; i < pairsCount; i++) {
@@ -342,6 +352,12 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
           rate: numberLines[i].rate
         });
       }
+    }
+
+    console.log('[PARSER] Final items count:', items.length);
+    if (items.length > 0) {
+      console.log('[PARSER] First item:', items[0]);
+      console.log('[PARSER] Last item:', items[items.length - 1]);
     }
 
     return items;
