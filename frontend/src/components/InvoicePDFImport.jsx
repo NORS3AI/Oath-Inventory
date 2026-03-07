@@ -260,26 +260,31 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     const items = [];
     const lines = text.split('\n');
 
-    // First pass: extract product names (lines with pattern like "Product (Xmg)")
+    // First pass: extract product names and numbers
     const productNames = [];
     const numberLines = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
 
-      // Skip empty lines, headers, footers
-      if (!line || line.toLowerCase().includes('activity') ||
-          line.toLowerCase().includes('total') ||
+      // Skip empty lines, headers, footers (but NOT lines with product names)
+      if (!line || line.toLowerCase().includes('activity description') ||
           line.toLowerCase().includes('return policy') ||
           line.toLowerCase().includes('disclaimer') ||
-          line.toLowerCase().includes('page ') ||
-          line.toLowerCase().includes('3ml vial') ||
-          line.toLowerCase().includes('caps')) {
+          line.match(/^page \d+ of \d+$/i)) {
         continue;
       }
 
-      // Check if line is just numbers: "QTY RATE AMOUNT" or "QTY RATE"
-      const numbersOnlyMatch = line.match(/^([\d,]+)\s+([\d.]+)(?:\s+([\d,.]+))?\s*$/);
+      // Skip lines that are ONLY "3ML Vial" or "Caps" with no product name
+      if ((line.toLowerCase() === '3ml vial / matte black' ||
+           line.toLowerCase() === 'caps' ||
+           line.toLowerCase() === '3ml vial / matte black caps') &&
+          !line.match(/\([0-9.]+mg\)/)) {
+        continue;
+      }
+
+      // Check if line is just numbers: "QTY RATE AMOUNT"
+      const numbersOnlyMatch = line.match(/^([\d,]+)\s+([\d.]+)\s+([\d,.]+)\s*$/);
       if (numbersOnlyMatch) {
         const rate = parseFloat(numbersOnlyMatch[2]);
         if (!isNaN(rate) && rate > 0) {
@@ -288,18 +293,24 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
         continue;
       }
 
-      // Check if line has product name + numbers: "Product Name QTY RATE AMOUNT"
-      const nameWithNumbersMatch = line.match(/^(.+?)\s+([\d,]+)\s+([\d.]+)\s+([\d,.]+)\s*$/);
-      if (nameWithNumbersMatch) {
-        const activity = nameWithNumbersMatch[1].trim();
-        const rate = parseFloat(nameWithNumbersMatch[3]);
+      // Check if line has product name + description + numbers: "Product Name 3ML Vial... QTY RATE AMOUNT"
+      // Example: "Tesamorelin (6mg) / Ipamorelin (2mg) Blend (8mg) 3ML Vial / Matte Black 330 11.00 3,630.00"
+      const fullLineMatch = line.match(/^(.+?)\s+([\d,]+)\s+([\d.]+)\s+([\d,.]+)\s*$/);
+      if (fullLineMatch) {
+        const fullText = fullLineMatch[1].trim();
+        const rate = parseFloat(fullLineMatch[3]);
+
+        // Extract just the product name (before "3ML Vial" or similar)
+        const activityMatch = fullText.match(/^(.+?)\s+3ML Vial/i);
+        const activity = activityMatch ? activityMatch[1].trim() : fullText;
+
         if (activity && !isNaN(rate) && rate > 0) {
           items.push({ activity, rate });
           continue;
         }
       }
 
-      // Extract product names from concatenated line (e.g., "BPC-157 (5mg) TB-500 (5mg) ...")
+      // Extract product names from lines (e.g., "BPC-157 (5mg) TB-500 (5mg) ...")
       // Match pattern: Word(s) followed by (Xmg) or (X.Xmg)
       const namePattern = /([A-Za-z0-9\-\/\s]+?\([0-9.]+mg\))/g;
       const matches = line.match(namePattern);
