@@ -192,16 +192,15 @@ export default function Prices({ peptides }) {
       {/* Pricing Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="text-sm" style={{ width: 'auto', tableLayout: 'fixed' }}>
             <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
               <tr>
                 {visibleColumns.map(column => (
                   <th
                     key={column.id}
                     onClick={() => handleSort(column.id)}
-                    className={`px-2 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors
-                      ${column.id === 'product' ? 'w-32' : 'w-28'}
-                    `}
+                    style={{ width: column.id === 'product' ? '140px' : '100px' }}
+                    className="px-2 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                   >
                     <div className="flex items-center gap-1">
                       {column.label}
@@ -232,7 +231,7 @@ export default function Prices({ peptides }) {
                       {visibleColumns.map(column => {
                         if (column.id === 'product') {
                           return (
-                            <td key={column.id} className="px-2 py-2 w-32">
+                            <td key={column.id} className="px-2 py-2" style={{ width: '140px' }}>
                               <div className="font-medium text-gray-900 dark:text-white truncate text-sm">{product.label}</div>
                               {product.sub && product.sub !== product.label && (
                                 <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{product.sub}</div>
@@ -242,7 +241,7 @@ export default function Prices({ peptides }) {
                         } else {
                           const colKey = getColumnKey(column.id);
                           return (
-                            <td key={column.id} className="px-1 py-1.5 w-28">
+                            <td key={column.id} className="px-1 py-1.5" style={{ width: '100px' }}>
                               <input
                                 type="text"
                                 inputMode="decimal"

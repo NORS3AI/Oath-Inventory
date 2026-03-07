@@ -13,15 +13,41 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
   const [mappings, setMappings] = useState({});
   const [targetColumn, setTargetColumn] = useState('price');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
   const [step, setStep] = useState('upload'); // 'upload', 'mapping', 'preview'
   const { success, error: showError } = useToast();
 
+  // Fast substring check before expensive calculation
+  const quickMatch = (s1, s2) => {
+    const lower1 = s1.toLowerCase();
+    const lower2 = s2.toLowerCase();
+
+    // Exact match
+    if (lower1 === lower2) return 1.0;
+
+    // Substring match
+    if (lower1.includes(lower2) || lower2.includes(lower1)) {
+      const shorter = Math.min(lower1.length, lower2.length);
+      const longer = Math.max(lower1.length, lower2.length);
+      return shorter / longer;
+    }
+
+    return null; // No quick match
+  };
+
   // Calculate similarity between two strings (simple Levenshtein-like)
   const similarity = (s1, s2) => {
+    // Try quick match first
+    const quick = quickMatch(s1, s2);
+    if (quick !== null) return quick;
+
     const longer = s1.length > s2.length ? s1 : s2;
     const shorter = s1.length > s2.length ? s2 : s1;
 
     if (longer.length === 0) return 1.0;
+
+    // Skip expensive calculation for very different lengths
+    if (longer.length > shorter.length * 2) return 0;
 
     const editDistance = (s1, s2) => {
       s1 = s1.toLowerCase();
@@ -93,9 +119,41 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     return { product: bestMatch, confidence: bestScore };
   }, [uniqueProducts]);
 
+  // Process items in batches to avoid UI blocking
+  const processBatch = async (items, batchSize = 10) => {
+    const results = [];
+
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+
+      // Update progress
+      setProcessingStatus(`Matching products... ${i + batch.length}/${items.length}`);
+
+      // Process batch
+      const batchResults = batch.map(item => {
+        const { product, confidence } = findBestMatch(item.activity);
+        return {
+          ...item,
+          suggestedProduct: product,
+          confidence: confidence,
+          selectedProduct: confidence > 0.7 ? product : null
+        };
+      });
+
+      results.push(...batchResults);
+
+      // Yield to UI thread
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    return results;
+  };
+
   // Parse PDF and extract Activity + Rate
   const parsePDF = async (file) => {
     setIsProcessing(true);
+    setProcessingStatus('Reading PDF...');
+
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -104,11 +162,14 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
 
       // Extract text from all pages
       for (let i = 1; i <= pdf.numPages; i++) {
+        setProcessingStatus(`Extracting page ${i}/${pdf.numPages}...`);
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map(item => item.str).join(' ');
         fullText += pageText + '\n';
       }
+
+      setProcessingStatus('Parsing invoice data...');
 
       // Parse the text to find Activity and Rate pairs
       const items = parseInvoiceText(fullText);
@@ -116,19 +177,12 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
       if (items.length === 0) {
         showError('No pricing data found in PDF. Please check the format.');
         setIsProcessing(false);
+        setProcessingStatus('');
         return;
       }
 
-      // Auto-match products
-      const itemsWithMatches = items.map(item => {
-        const { product, confidence } = findBestMatch(item.activity);
-        return {
-          ...item,
-          suggestedProduct: product,
-          confidence: confidence,
-          selectedProduct: confidence > 0.7 ? product : null // Auto-select if high confidence
-        };
-      });
+      // Auto-match products in batches
+      const itemsWithMatches = await processBatch(items);
 
       setExtractedItems(itemsWithMatches);
 
@@ -142,12 +196,14 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
       setMappings(initialMappings);
 
       setStep('mapping');
+      setProcessingStatus('');
       success(`Extracted ${items.length} items from PDF`);
     } catch (err) {
       console.error('PDF parsing error:', err);
       showError('Failed to parse PDF. Please check the file format.');
     } finally {
       setIsProcessing(false);
+      setProcessingStatus('');
     }
   };
 
@@ -310,7 +366,9 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
           {isProcessing && (
             <div className="mt-4 text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Processing PDF...</p>
+              <p className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                {processingStatus || 'Processing PDF...'}
+              </p>
             </div>
           )}
         </div>
