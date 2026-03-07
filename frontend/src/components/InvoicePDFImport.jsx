@@ -4,8 +4,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { db } from '../lib/db';
 import { useToast } from './Toast';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker - force https for mobile compatibility
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function InvoicePDFImport({ peptides, onImportComplete }) {
   const [file, setFile] = useState(null);
@@ -168,26 +168,40 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     console.log('[PDF] Starting PDF processing');
     console.time('[PDF] Total processing time');
     setIsProcessing(true);
-    setProcessingStatus('Reading PDF...');
+    setProcessingStatus('Loading PDF.js worker...');
 
     try {
       console.time('[PDF] Loading PDF');
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      setProcessingStatus('Reading PDF file...');
+
+      // Add timeout for PDF loading (30 seconds)
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('PDF loading timed out after 30 seconds')), 30000);
+      });
+
+      const pdf = await Promise.race([loadingTask.promise, timeoutPromise]);
       console.timeEnd('[PDF] Loading PDF');
 
+      setProcessingStatus(`PDF loaded: ${pdf.numPages} pages, extracting text...`);
       console.time('[PDF] Extracting text');
       let fullText = '';
 
       // Extract text from all pages
       for (let i = 1; i <= pdf.numPages; i++) {
-        setProcessingStatus(`Extracting page ${i}/${pdf.numPages}...`);
+        setProcessingStatus(`Extracting text from page ${i}/${pdf.numPages}...`);
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map(item => item.str).join(' ');
         fullText += pageText + '\n';
+
+        // Yield to UI on mobile after each page
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
       console.timeEnd('[PDF] Extracting text');
+      console.log(`[PDF] Extracted ${fullText.length} characters`);
 
       setProcessingStatus('Parsing invoice data...');
       console.time('[PDF] Parsing invoice text');
@@ -224,7 +238,14 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
       success(`Extracted ${items.length} items from PDF`);
     } catch (err) {
       console.error('PDF parsing error:', err);
-      showError('Failed to parse PDF. Please check the file format.');
+      const errorMsg = err.message || 'Unknown error';
+      if (errorMsg.includes('timeout')) {
+        showError('PDF loading timed out. Try using a smaller PDF or check your internet connection.');
+      } else if (errorMsg.includes('worker')) {
+        showError('PDF.js worker failed to load. Please refresh the page and try again.');
+      } else {
+        showError(`Failed to parse PDF: ${errorMsg}`);
+      }
       console.timeEnd('[PDF] Total processing time');
     } finally {
       setIsProcessing(false);
@@ -267,6 +288,7 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     const selectedFile = e.target.files?.[0];
     if (selectedFile && selectedFile.type === 'application/pdf') {
       setFile(selectedFile);
+      console.log(`[PDF] File selected: ${selectedFile.name}, ${(selectedFile.size / 1024).toFixed(1)} KB`);
       parsePDF(selectedFile);
     } else {
       showError('Please select a PDF file');
@@ -394,6 +416,11 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
               <p className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                 {processingStatus || 'Processing PDF...'}
               </p>
+              {file && (
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
             </div>
           )}
         </div>
