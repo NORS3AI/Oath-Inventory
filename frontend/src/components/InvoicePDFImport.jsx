@@ -15,7 +15,7 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [step, setStep] = useState('upload'); // 'upload', 'mapping', 'preview'
-  const [inputMode, setInputMode] = useState('pdf'); // 'pdf' or 'text'
+  const [inputMode, setInputMode] = useState('text'); // 'pdf' or 'text' - default to text for mobile
   const [pastedText, setPastedText] = useState('');
   const { success, error: showError } = useToast();
 
