@@ -90,29 +90,38 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
 
     for (const product of uniqueProducts) {
       // Quick exact match check first (case-insensitive)
-      if (product.peptideId?.toLowerCase() === activityLower ||
-          product.peptideName?.toLowerCase() === activityLower ||
-          product.nickname?.toLowerCase() === activityLower) {
+      const idLower = product.peptideId?.toLowerCase();
+      const nameLower = product.peptideName?.toLowerCase();
+      const nickLower = product.nickname?.toLowerCase();
+
+      if (idLower === activityLower || nameLower === activityLower || nickLower === activityLower) {
         return { product, confidence: 1.0 };
       }
 
-      // Check against peptideId, peptideName, and nickname
-      const scores = [
-        product.peptideId ? similarity(activityName, product.peptideId) : 0,
-        product.peptideName ? similarity(activityName, product.peptideName) : 0,
-        product.nickname ? similarity(activityName, product.nickname) : 0
-      ];
+      // Try each field and stop early if we find a good match
+      let maxScore = 0;
 
-      const maxScore = Math.max(...scores);
+      if (product.peptideId) {
+        const score = similarity(activityName, product.peptideId);
+        if (score > maxScore) maxScore = score;
+        if (score > 0.95) return { product, confidence: score };
+      }
+
+      if (product.nickname && maxScore < 0.95) {
+        const score = similarity(activityName, product.nickname);
+        if (score > maxScore) maxScore = score;
+        if (score > 0.95) return { product, confidence: score };
+      }
+
+      if (product.peptideName && maxScore < 0.95) {
+        const score = similarity(activityName, product.peptideName);
+        if (score > maxScore) maxScore = score;
+        if (score > 0.95) return { product, confidence: score };
+      }
 
       if (maxScore > bestScore) {
         bestScore = maxScore;
         bestMatch = product;
-
-        // Early exit if we found a near-perfect match
-        if (maxScore > 0.95) {
-          return { product: bestMatch, confidence: bestScore };
-        }
       }
     }
 
@@ -120,14 +129,16 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
   }, [uniqueProducts]);
 
   // Process items in batches to avoid UI blocking
-  const processBatch = async (items, batchSize = 10) => {
+  const processBatch = async (items, batchSize = 25) => {
+    console.log(`[PDF] Starting batch processing for ${items.length} items`);
+    console.time('[PDF] Total matching time');
     const results = [];
 
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
 
       // Update progress
-      setProcessingStatus(`Matching products... ${i + batch.length}/${items.length}`);
+      setProcessingStatus(`Matching products... ${Math.min(i + batchSize, items.length)}/${items.length}`);
 
       // Process batch
       const batchResults = batch.map(item => {
@@ -142,22 +153,30 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
 
       results.push(...batchResults);
 
-      // Yield to UI thread
-      await new Promise(resolve => setTimeout(resolve, 0));
+      // Yield to UI thread every 3 batches (75 items)
+      if (i % (batchSize * 3) === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
     }
 
+    console.timeEnd('[PDF] Total matching time');
     return results;
   };
 
   // Parse PDF and extract Activity + Rate
   const parsePDF = async (file) => {
+    console.log('[PDF] Starting PDF processing');
+    console.time('[PDF] Total processing time');
     setIsProcessing(true);
     setProcessingStatus('Reading PDF...');
 
     try {
+      console.time('[PDF] Loading PDF');
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      console.timeEnd('[PDF] Loading PDF');
 
+      console.time('[PDF] Extracting text');
       let fullText = '';
 
       // Extract text from all pages
@@ -168,16 +187,20 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
         const pageText = textContent.items.map(item => item.str).join(' ');
         fullText += pageText + '\n';
       }
+      console.timeEnd('[PDF] Extracting text');
 
       setProcessingStatus('Parsing invoice data...');
-
+      console.time('[PDF] Parsing invoice text');
       // Parse the text to find Activity and Rate pairs
       const items = parseInvoiceText(fullText);
+      console.timeEnd('[PDF] Parsing invoice text');
+      console.log(`[PDF] Extracted ${items.length} items`);
 
       if (items.length === 0) {
         showError('No pricing data found in PDF. Please check the format.');
         setIsProcessing(false);
         setProcessingStatus('');
+        console.timeEnd('[PDF] Total processing time');
         return;
       }
 
@@ -197,10 +220,12 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
 
       setStep('mapping');
       setProcessingStatus('');
+      console.timeEnd('[PDF] Total processing time');
       success(`Extracted ${items.length} items from PDF`);
     } catch (err) {
       console.error('PDF parsing error:', err);
       showError('Failed to parse PDF. Please check the file format.');
+      console.timeEnd('[PDF] Total processing time');
     } finally {
       setIsProcessing(false);
       setProcessingStatus('');
