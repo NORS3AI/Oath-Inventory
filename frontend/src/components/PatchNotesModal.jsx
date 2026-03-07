@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.124', date: '2026-03-07', title: 'Invoice Parser: Add "QTY RATE AMOUNT" format support - extract RATE from middle column, handles comma-separated quantities, skip headers/footers' },
+  { version: '0.0.123', date: '2026-03-07', title: 'Invoice Import: Add "Paste Text" mode - bypass PDF parsing entirely, copy text from PDF and paste directly, instant processing on mobile' },
   { version: '0.0.122', date: '2026-03-07', title: 'PDF Import: Fix iPad/mobile loading - force HTTPS worker URL, 30s timeout, better status messages, show file size during processing' },
   { version: '0.0.121', date: '2026-03-07', title: 'PDF Import: Performance tuning - 2.5x batch size, cache toLowerCase, early-exit per field, reduce setTimeout calls, detailed console logging' },
   { version: '0.0.120', date: '2026-03-07', title: 'Fix zoom issue: Prevent browser from zooming in/out when alt-tabbing - disable user-scalable, lock zoom to 1.0x' },
