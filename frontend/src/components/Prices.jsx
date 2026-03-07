@@ -96,31 +96,55 @@ export default function Prices({ peptides }) {
     window.print();
   };
 
-  // Handle CSV export
-  const handleExportCSV = () => {
-    // Build CSV header
+  // Handle Text export
+  const handleExportText = () => {
+    // Build header line
     const headers = visibleColumns.map(col => col.label);
-    const csvRows = [headers.join(',')];
 
-    // Build CSV rows with data from sortedProducts
-    sortedProducts.forEach(product => {
-      const row = visibleColumns.map(col => {
-        if (col.id === 'product') {
-          return `"${product.displayName}"`;
-        }
-        const value = prices[product.key]?.[col.id] || '';
-        return `"${value}"`;
-      });
-      csvRows.push(row.join(','));
+    // Calculate column widths based on content
+    const columnWidths = headers.map((header, idx) => {
+      const col = visibleColumns[idx];
+      const maxContentWidth = Math.max(
+        header.length,
+        ...sortedProducts.map(product => {
+          if (col.id === 'product') return product.displayName.length;
+          return (prices[product.key]?.[col.id] || '').toString().length;
+        })
+      );
+      return Math.min(maxContentWidth + 2, 40); // Max 40 chars per column
     });
 
-    // Create blob and download
-    const csvContent = csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Helper to pad text
+    const pad = (text, width) => text.toString().padEnd(width, ' ');
+
+    // Build text output
+    let textOutput = 'PRICING TABLE\n';
+    textOutput += `Generated: ${new Date().toLocaleString()}\n\n`;
+
+    // Header row
+    textOutput += headers.map((h, i) => pad(h, columnWidths[i])).join(' | ') + '\n';
+    textOutput += columnWidths.map(w => '-'.repeat(w)).join('-+-') + '\n';
+
+    // Data rows
+    sortedProducts.forEach(product => {
+      const row = visibleColumns.map((col, i) => {
+        let value;
+        if (col.id === 'product') {
+          value = product.displayName;
+        } else {
+          value = prices[product.key]?.[col.id] || '';
+        }
+        return pad(value, columnWidths[i]);
+      });
+      textOutput += row.join(' | ') + '\n';
+    });
+
+    // Download as .txt file
+    const blob = new Blob([textOutput], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `prices_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `prices_${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -306,11 +330,11 @@ export default function Prices({ peptides }) {
           <span className="hidden sm:inline">Import Invoice</span>
         </button>
         <button
-          onClick={handleExportCSV}
+          onClick={handleExportText}
           className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
           <Download className="w-4 h-4" />
-          <span className="hidden sm:inline">Export CSV</span>
+          <span className="hidden sm:inline">Export Text</span>
         </button>
         <button
           onClick={handlePrint}
