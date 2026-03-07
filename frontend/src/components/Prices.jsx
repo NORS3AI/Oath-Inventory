@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { List, FileText, ArrowUpDown, Printer } from 'lucide-react';
+import { List, FileText, ArrowUpDown, Printer, Download } from 'lucide-react';
 import { db } from '../lib/db';
 import ColumnReorderModal from './ColumnReorderModal';
 import InvoicePDFImport from './InvoicePDFImport';
@@ -94,6 +94,37 @@ export default function Prices({ peptides }) {
   // Handle print
   const handlePrint = () => {
     window.print();
+  };
+
+  // Handle CSV export
+  const handleExportCSV = () => {
+    // Build CSV header
+    const headers = visibleColumns.map(col => col.label);
+    const csvRows = [headers.join(',')];
+
+    // Build CSV rows with data from sortedProducts
+    sortedProducts.forEach(product => {
+      const row = visibleColumns.map(col => {
+        if (col.id === 'product') {
+          return `"${product.displayName}"`;
+        }
+        const value = prices[product.key]?.[col.id] || '';
+        return `"${value}"`;
+      });
+      csvRows.push(row.join(','));
+    });
+
+    // Create blob and download
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `prices_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleChange = useCallback((productKey, col, value) => {
@@ -275,8 +306,15 @@ export default function Prices({ peptides }) {
           <span className="hidden sm:inline">Import Invoice</span>
         </button>
         <button
-          onClick={handlePrint}
+          onClick={handleExportCSV}
           className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          <span className="hidden sm:inline">Export CSV</span>
+        </button>
+        <button
+          onClick={handlePrint}
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
         >
           <Printer className="w-4 h-4" />
           <span className="hidden sm:inline">Print</span>
