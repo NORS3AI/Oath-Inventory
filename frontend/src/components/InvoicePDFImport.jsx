@@ -328,13 +328,17 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
         continue; // Don't also match single products on this line
       }
 
-      // Then match single products: "BPC-157 (5mg)" or "TB-500 (5mg)"
-      const singlePattern = /\b([A-Za-z][A-Za-z0-9\-]+\s*\([0-9.]+mg\))\b/gi;
+      // Then match single products: "BPC-157 (5mg)", "TB-500 (5mg)", "Melanotan I (10mg)", "Thymosin Alpha-1 (10mg)"
+      // Allow multi-word product names with spaces
+      const singlePattern = /([A-Za-z0-9\-]+(?:\s+[A-Za-z0-9\-]+)*\s*\([0-9.]+mg\))/gi;
       const singleMatches = line.match(singlePattern);
 
       if (singleMatches) {
         singleMatches.forEach(name => {
-          productNames.push(name.trim());
+          // Skip if it's part of a blend (already captured)
+          if (!name.toLowerCase().includes('blend')) {
+            productNames.push(name.trim());
+          }
         });
       }
     }
