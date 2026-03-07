@@ -189,50 +189,77 @@ export default function Prices({ peptides }) {
             -webkit-print-color-adjust: exact;
           }
 
-          /* Remove scroll container constraints */
-          .overflow-x-auto {
+          /* Remove ALL overflow constraints that hide content */
+          * {
             overflow: visible !important;
+          }
+
+          /* Show all divs and remove shadows/borders */
+          .space-y-4,
+          .bg-white,
+          .dark\\:bg-gray-800,
+          .rounded-lg,
+          .shadow {
+            overflow: visible !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
           }
 
           /* Full-width table for print */
           table {
             width: 100% !important;
-            page-break-inside: auto;
+            table-layout: auto !important;
+            page-break-inside: auto !important;
+            border-collapse: collapse !important;
           }
 
+          /* Repeat headers on each page */
           thead {
-            display: table-header-group;
+            display: table-header-group !important;
           }
 
           tbody {
-            display: table-row-group;
+            display: table-row-group !important;
           }
 
+          /* Prevent rows from breaking mid-page */
           tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
           }
 
-          /* Prevent inputs from looking weird in print */
-          input {
-            border: 1px solid #e5e7eb !important;
+          /* Force white background and black text */
+          * {
             background: white !important;
             color: black !important;
-            -webkit-appearance: none;
-            appearance: none;
           }
 
-          /* Clean header styling for print */
+          /* Clean input styling for print */
+          input {
+            border: 1px solid #d1d5db !important;
+            padding: 4px 6px !important;
+            -webkit-appearance: none !important;
+            appearance: none !important;
+          }
+
+          /* Clean header styling */
           th {
             background-color: #f3f4f6 !important;
-            color: #374151 !important;
+            color: #1f2937 !important;
             border: 1px solid #d1d5db !important;
             padding: 8px 6px !important;
+            font-weight: 600 !important;
           }
 
+          /* Clean cell styling */
           td {
             border: 1px solid #e5e7eb !important;
             padding: 6px 4px !important;
+          }
+
+          /* Hide icons in print */
+          svg {
+            display: none !important;
           }
         }
       `}</style>
