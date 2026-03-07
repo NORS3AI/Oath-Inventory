@@ -260,42 +260,64 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     const items = [];
     const lines = text.split('\n');
 
-    // Pattern matching for multiple invoice formats
+    // First pass: extract product names (lines with pattern like "Product (Xmg)")
+    const productNames = [];
+    const numberLines = [];
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
 
-      // Skip empty lines and headers
+      // Skip empty lines, headers, footers
       if (!line || line.toLowerCase().includes('activity') ||
           line.toLowerCase().includes('total') ||
           line.toLowerCase().includes('return policy') ||
           line.toLowerCase().includes('disclaimer') ||
-          line.toLowerCase().includes('page ')) {
+          line.toLowerCase().includes('page ') ||
+          line.toLowerCase().includes('3ml vial') ||
+          line.toLowerCase().includes('caps')) {
         continue;
       }
 
-      // Format 1: "Product Name QTY RATE AMOUNT"
-      // Example: "BPC-157 100 5.50 550.00" or "BPC-157 1,400 8.25 11,550.00"
-      const qtyRateAmountMatch = line.match(/^(.+?)\s+([\d,]+)\s+([\d.]+)\s+([\d,.]+)\s*$/);
-      if (qtyRateAmountMatch) {
-        const activity = qtyRateAmountMatch[1].trim();
-        const rate = parseFloat(qtyRateAmountMatch[3]); // Middle number is RATE
+      // Check if line is just numbers: "QTY RATE AMOUNT" or "QTY RATE"
+      const numbersOnlyMatch = line.match(/^([\d,]+)\s+([\d.]+)(?:\s+([\d,.]+))?\s*$/);
+      if (numbersOnlyMatch) {
+        const rate = parseFloat(numbersOnlyMatch[2]);
+        if (!isNaN(rate) && rate > 0) {
+          numberLines.push({ rate });
+        }
+        continue;
+      }
 
+      // Check if line has product name + numbers: "Product Name QTY RATE AMOUNT"
+      const nameWithNumbersMatch = line.match(/^(.+?)\s+([\d,]+)\s+([\d.]+)\s+([\d,.]+)\s*$/);
+      if (nameWithNumbersMatch) {
+        const activity = nameWithNumbersMatch[1].trim();
+        const rate = parseFloat(nameWithNumbersMatch[3]);
         if (activity && !isNaN(rate) && rate > 0) {
           items.push({ activity, rate });
           continue;
         }
       }
 
-      // Format 2: "Product Name $PRICE" or "Product Name PRICE"
-      // Example: "BPC-157 100.00" or "BPC-157 $100.00"
-      const simplePriceMatch = line.match(/^(.+?)\s+\$?([\d.]+)\s*$/);
-      if (simplePriceMatch) {
-        const activity = simplePriceMatch[1].trim();
-        const rate = parseFloat(simplePriceMatch[2]);
+      // Extract product names from concatenated line (e.g., "BPC-157 (5mg) TB-500 (5mg) ...")
+      // Match pattern: Word(s) followed by (Xmg) or (X.Xmg)
+      const namePattern = /([A-Za-z0-9\-\/\s]+?\([0-9.]+mg\))/g;
+      const matches = line.match(namePattern);
+      if (matches) {
+        matches.forEach(name => {
+          productNames.push(name.trim());
+        });
+      }
+    }
 
-        if (activity && !isNaN(rate) && rate > 0) {
-          items.push({ activity, rate });
-        }
+    // If we have product names and number lines separately, pair them up
+    if (productNames.length > 0 && numberLines.length > 0) {
+      const pairsCount = Math.min(productNames.length, numberLines.length);
+      for (let i = 0; i < pairsCount; i++) {
+        items.push({
+          activity: productNames[i],
+          rate: numberLines[i].rate
+        });
       }
     }
 
