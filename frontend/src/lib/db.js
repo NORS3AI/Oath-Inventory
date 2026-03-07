@@ -493,6 +493,7 @@ export const db = {
     const labels = await this.labels.getLabeled();
     const settings = await this.settings.getAll();
     const transactions = await this.transactions.getAll();
+    const snapshots = await this.snapshots.getAll();
 
     // Export velocity history for all peptides
     const velocityHistory = {};
@@ -504,7 +505,7 @@ export const db = {
     }
 
     return {
-      version: '1.0',
+      version: '2.0',
       exportDate: new Date().toISOString(),
       data: {
         peptides,
@@ -512,7 +513,8 @@ export const db = {
         labels,
         settings,
         transactions,
-        velocityHistory
+        velocityHistory,
+        snapshots
       }
     };
   },
@@ -520,7 +522,7 @@ export const db = {
   async importData(exportedData) {
     if (!exportedData.data) throw new Error('Invalid export data format');
 
-    const { peptides, orders, labels, settings, transactions, velocityHistory } = exportedData.data;
+    const { peptides, orders, labels, settings, transactions, velocityHistory, snapshots } = exportedData.data;
 
     // Import peptides
     if (peptides) {
@@ -562,6 +564,13 @@ export const db = {
     if (velocityHistory) {
       for (const [peptideId, history] of Object.entries(velocityHistory)) {
         await velocityHistoryStore.setItem(peptideId, history);
+      }
+    }
+
+    // Import snapshots
+    if (snapshots) {
+      for (const snapshot of snapshots) {
+        await this.snapshots.save(snapshot.label || snapshot.date, snapshot.data, snapshot.date);
       }
     }
 
