@@ -260,23 +260,40 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     const items = [];
     const lines = text.split('\n');
 
-    // Simple pattern matching for common invoice formats
-    // Looking for patterns like: "Activity Name ... $123.45" or "Activity Name 123.45"
+    // Pattern matching for multiple invoice formats
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
 
       // Skip empty lines and headers
-      if (!line || line.toLowerCase().includes('activity') || line.toLowerCase().includes('total')) {
+      if (!line || line.toLowerCase().includes('activity') ||
+          line.toLowerCase().includes('total') ||
+          line.toLowerCase().includes('return policy') ||
+          line.toLowerCase().includes('disclaimer') ||
+          line.toLowerCase().includes('page ')) {
         continue;
       }
 
-      // Try to match: text followed by a price
-      const priceMatch = line.match(/^(.+?)\s+\$?(\d+\.?\d*)\s*$/);
-      if (priceMatch) {
-        const activity = priceMatch[1].trim();
-        const rate = parseFloat(priceMatch[2]);
+      // Format 1: "Product Name QTY RATE AMOUNT"
+      // Example: "BPC-157 100 5.50 550.00" or "BPC-157 1,400 8.25 11,550.00"
+      const qtyRateAmountMatch = line.match(/^(.+?)\s+([\d,]+)\s+([\d.]+)\s+([\d,.]+)\s*$/);
+      if (qtyRateAmountMatch) {
+        const activity = qtyRateAmountMatch[1].trim();
+        const rate = parseFloat(qtyRateAmountMatch[3]); // Middle number is RATE
 
-        if (activity && !isNaN(rate)) {
+        if (activity && !isNaN(rate) && rate > 0) {
+          items.push({ activity, rate });
+          continue;
+        }
+      }
+
+      // Format 2: "Product Name $PRICE" or "Product Name PRICE"
+      // Example: "BPC-157 100.00" or "BPC-157 $100.00"
+      const simplePriceMatch = line.match(/^(.+?)\s+\$?([\d.]+)\s*$/);
+      if (simplePriceMatch) {
+        const activity = simplePriceMatch[1].trim();
+        const rate = parseFloat(simplePriceMatch[2]);
+
+        if (activity && !isNaN(rate) && rate > 0) {
           items.push({ activity, rate });
         }
       }
