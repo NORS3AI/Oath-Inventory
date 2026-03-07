@@ -310,12 +310,24 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
         }
       }
 
-      // Extract product names from lines (e.g., "BPC-157 (5mg) TB-500 (5mg) ...")
-      // Match pattern: Word(s) followed by (Xmg) or (X.Xmg)
-      const namePattern = /([A-Za-z0-9\-\/\s]+?\([0-9.]+mg\))/g;
-      const matches = line.match(namePattern);
-      if (matches) {
-        matches.forEach(name => {
+      // Extract product names from lines
+      // First try to match blend products: "Tesamorelin (6mg) / Ipamorelin (2mg) Blend (8mg)"
+      const blendPattern = /([A-Za-z0-9\-]+\s*\([0-9.]+mg\)\s*\/\s*[A-Za-z0-9\-]+\s*\([0-9.]+mg\)\s+Blend\s+\([0-9.]+mg\))/gi;
+      const blendMatches = line.match(blendPattern);
+
+      if (blendMatches) {
+        blendMatches.forEach(name => {
+          productNames.push(name.trim());
+        });
+        continue; // Don't also match single products on this line
+      }
+
+      // Then match single products: "BPC-157 (5mg)" or "TB-500 (5mg)"
+      const singlePattern = /\b([A-Za-z][A-Za-z0-9\-]+\s*\([0-9.]+mg\))\b/gi;
+      const singleMatches = line.match(singlePattern);
+
+      if (singleMatches) {
+        singleMatches.forEach(name => {
           productNames.push(name.trim());
         });
       }

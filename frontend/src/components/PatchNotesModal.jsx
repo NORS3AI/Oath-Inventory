@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.129', date: '2026-03-07', title: 'Invoice Parser: Keep blend products together - "Tesamorelin (6mg) / Ipamorelin (2mg) Blend (8mg)" stays as ONE item, not split into two' },
   { version: '0.0.128', date: '2026-03-07', title: 'Invoice Parser: Fix "Product (Xmg) 3ML Vial QTY RATE AMOUNT" format - extract product name before "3ML Vial", handle inline descriptions' },
   { version: '0.0.127', date: '2026-03-07', title: 'Prices: Add print button - save as PDF or print price table with visible columns only, clean formatting for paper' },
   { version: '0.0.126', date: '2026-03-07', title: 'Invoice Import: Default to "Paste Text" mode - faster mobile workflow, skip PDF upload step' },
