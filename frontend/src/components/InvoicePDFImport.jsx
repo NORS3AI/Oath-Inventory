@@ -15,6 +15,8 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [step, setStep] = useState('upload'); // 'upload', 'mapping', 'preview'
+  const [inputMode, setInputMode] = useState('pdf'); // 'pdf' or 'text'
+  const [pastedText, setPastedText] = useState('');
   const { success, error: showError } = useToast();
 
   // Fast substring check before expensive calculation
@@ -295,6 +297,58 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     }
   };
 
+  // Handle pasted text processing
+  const handleTextSubmit = async () => {
+    if (!pastedText.trim()) {
+      showError('Please paste some text first');
+      return;
+    }
+
+    setIsProcessing(true);
+    setProcessingStatus('Parsing invoice data...');
+
+    try {
+      console.log('[TEXT] Starting text processing');
+      console.time('[TEXT] Total processing time');
+
+      // Parse the pasted text
+      const items = parseInvoiceText(pastedText);
+      console.log(`[TEXT] Extracted ${items.length} items`);
+
+      if (items.length === 0) {
+        showError('No pricing data found. Please check the format.');
+        setIsProcessing(false);
+        setProcessingStatus('');
+        return;
+      }
+
+      // Auto-match products in batches
+      const itemsWithMatches = await processBatch(items);
+
+      setExtractedItems(itemsWithMatches);
+
+      // Initialize mappings
+      const initialMappings = {};
+      itemsWithMatches.forEach((item, idx) => {
+        if (item.selectedProduct) {
+          initialMappings[idx] = item.selectedProduct.peptideId;
+        }
+      });
+      setMappings(initialMappings);
+
+      setStep('mapping');
+      setProcessingStatus('');
+      console.timeEnd('[TEXT] Total processing time');
+      success(`Extracted ${items.length} items from pasted text`);
+    } catch (err) {
+      console.error('Text parsing error:', err);
+      showError(`Failed to parse text: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
+      setProcessingStatus('');
+    }
+  };
+
   // Handle product mapping change
   const handleMappingChange = (itemIndex, peptideId) => {
     setMappings(prev => ({
@@ -365,6 +419,7 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
   // Cancel and reset
   const handleCancel = () => {
     setFile(null);
+    setPastedText('');
     setExtractedItems([]);
     setMappings({});
     setStep('upload');
@@ -386,35 +441,89 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
       {step === 'upload' && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Import Invoice PDF
+            Import Invoice Data
           </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Upload a PDF invoice containing product names (Activity) and prices (Rate).
-            The system will attempt to match products automatically.
-          </p>
 
-          <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <Upload className="w-12 h-12 mb-4 text-gray-400 dark:text-gray-500" />
-              <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-semibold">Click to upload</span> or drag and drop
+          {/* Mode Toggle */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setInputMode('pdf')}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                inputMode === 'pdf'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              Upload PDF
+            </button>
+            <button
+              onClick={() => setInputMode('text')}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                inputMode === 'text'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              Paste Text
+            </button>
+          </div>
+
+          {/* PDF Upload Mode */}
+          {inputMode === 'pdf' && (
+            <>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Upload a PDF invoice containing product names (Activity) and prices (Rate).
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">PDF files only</p>
-            </div>
-            <input
-              type="file"
-              className="hidden"
-              accept=".pdf"
-              onChange={handleFileChange}
-              disabled={isProcessing}
-            />
-          </label>
+
+              <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-12 h-12 mb-4 text-gray-400 dark:text-gray-500" />
+                  <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-semibold">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">PDF files only</p>
+                </div>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                  disabled={isProcessing}
+                />
+              </label>
+            </>
+          )}
+
+          {/* Text Paste Mode */}
+          {inputMode === 'text' && (
+            <>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Paste invoice text containing product names and prices. Each line should have a product name followed by a price.
+              </p>
+
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Paste invoice text here...&#10;Example:&#10;BPC-157 100.00&#10;TB-500 150.00&#10;GHK-Cu 75.00"
+                disabled={isProcessing}
+                className="w-full h-64 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
+              />
+
+              <button
+                onClick={handleTextSubmit}
+                disabled={isProcessing || !pastedText.trim()}
+                className="mt-4 w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              >
+                {isProcessing ? 'Processing...' : 'Process Text'}
+              </button>
+            </>
+          )}
 
           {isProcessing && (
             <div className="mt-4 text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
               <p className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-                {processingStatus || 'Processing PDF...'}
+                {processingStatus || 'Processing...'}
               </p>
               {file && (
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
