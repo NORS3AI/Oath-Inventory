@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.115', date: '2026-03-07', title: 'Backup & Restore: Complete data export/import in Settings (Inventory, Prices, Snapshots, Labels, all data) - protect against cache clears' },
+  { version: '0.0.114', date: '2026-03-07', title: 'PDF Invoice Import: Upload invoices, auto-match products with fuzzy matching, choose price column (Price/Axx26/Bxx26/Cxx26)' },
+  { version: '0.0.113', date: '2026-03-07', title: 'Prices: Add column reordering and hiding (same as Inventory, Labeling, Sales Ready)' },
   { version: '0.0.112', date: '2026-02-16', title: 'Removed Manual Labels column - not required per user request' },
   { version: '0.0.111', date: '2026-02-16', title: 'OCR Scanner: Improved error handling with detailed messages, troubleshooting tips, and CDN configuration for worker files' },
   { version: '0.0.110', date: '2026-02-16', title: 'NEW COLUMN: Manual Labels - fully manual field that NEVER changes during CSV import (unlike Labeled which auto-adjusts)' },

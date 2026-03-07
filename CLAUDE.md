@@ -25,6 +25,15 @@ Vite base path is set to `/Oath-Inventory/` in vite.config.js.
 - Auto-approve all build/deploy operations (npm run build, copying to docs)
 - Only ask for confirmation on destructive operations (database drops, rm -rf)
 
+## Commit Requirements
+**CRITICAL**: Every commit MUST include:
+1. **Version bump** in `frontend/package.json` (increment by 1)
+2. **Patch notes** in `frontend/src/components/PatchNotesModal.jsx` (add to top of PATCH_NOTES array)
+   - Format: `{ version: 'X.X.XXX', date: 'YYYY-MM-DD', title: 'Brief description of changes' }`
+   - Date format: ISO date (YYYY-MM-DD)
+   - Title: Concise summary of what changed (one sentence)
+3. Changes must be committed together (version + patch notes + feature changes)
+
 ## Key Architecture Patterns
 
 ### Data Layer (`frontend/src/lib/db.js`)
