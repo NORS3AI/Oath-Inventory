@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.133', date: '2026-03-07', title: 'Prices Print: Add multi-page support - ALL products print across multiple pages, headers repeat, proper pagination' },
   { version: '0.0.132', date: '2026-03-07', title: 'Parser Fix: Allow multi-word product names with spaces - "Melanotan I (10mg)", "Thymosin Alpha-1 (10mg)", "TB-500 (5mg) short chain"' },
   { version: '0.0.131', date: '2026-03-07', title: 'Parser Debug: Add console logging to diagnose "only 1 item imported" issue - check browser console (F12) after paste' },
   { version: '0.0.130', date: '2026-03-07', title: 'Print: Fix multi-page printing - table headers repeat on each page, no page breaks mid-row, proper pagination' },
