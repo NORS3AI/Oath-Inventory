@@ -49,22 +49,32 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     return (longer.length - editDistance(longer, shorter)) / longer.length;
   };
 
+  // Memoize unique products to avoid recalculating on every match
+  const uniqueProducts = useMemo(() => {
+    return Array.from(
+      new Map(peptides.map(p => [p.peptideId, p])).values()
+    );
+  }, [peptides]);
+
   // Find best matching product for an activity name
   const findBestMatch = useCallback((activityName) => {
     let bestMatch = null;
     let bestScore = 0;
-
-    // Deduplicate products by peptideId
-    const uniqueProducts = Array.from(
-      new Map(peptides.map(p => [p.peptideId, p])).values()
-    );
+    const activityLower = activityName.toLowerCase();
 
     for (const product of uniqueProducts) {
+      // Quick exact match check first (case-insensitive)
+      if (product.peptideId?.toLowerCase() === activityLower ||
+          product.peptideName?.toLowerCase() === activityLower ||
+          product.nickname?.toLowerCase() === activityLower) {
+        return { product, confidence: 1.0 };
+      }
+
       // Check against peptideId, peptideName, and nickname
       const scores = [
-        similarity(activityName, product.peptideId || ''),
-        similarity(activityName, product.peptideName || ''),
-        similarity(activityName, product.nickname || '')
+        product.peptideId ? similarity(activityName, product.peptideId) : 0,
+        product.peptideName ? similarity(activityName, product.peptideName) : 0,
+        product.nickname ? similarity(activityName, product.nickname) : 0
       ];
 
       const maxScore = Math.max(...scores);
@@ -72,11 +82,16 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
       if (maxScore > bestScore) {
         bestScore = maxScore;
         bestMatch = product;
+
+        // Early exit if we found a near-perfect match
+        if (maxScore > 0.95) {
+          return { product: bestMatch, confidence: bestScore };
+        }
       }
     }
 
     return { product: bestMatch, confidence: bestScore };
-  }, [peptides]);
+  }, [uniqueProducts]);
 
   // Parse PDF and extract Activity + Rate
   const parsePDF = async (file) => {
@@ -185,21 +200,14 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
     }));
   };
 
-  // Get deduplicated products for dropdown
-  const uniqueProducts = useMemo(() => {
-    return Array.from(
-      new Map(
-        peptides.map(p => [
-          p.peptideId,
-          {
-            peptideId: p.peptideId,
-            label: p.nickname || p.peptideId,
-            sub: p.nickname ? p.peptideId : (p.peptideName || '')
-          }
-        ])
-      ).values()
-    ).sort((a, b) => a.label.localeCompare(b.label));
-  }, [peptides]);
+  // Get formatted products for dropdown
+  const productOptions = useMemo(() => {
+    return uniqueProducts.map(p => ({
+      peptideId: p.peptideId,
+      label: p.nickname || p.peptideId,
+      sub: p.nickname ? p.peptideId : (p.peptideName || '')
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [uniqueProducts]);
 
   // Apply the mappings and update prices
   const handleApply = async () => {
@@ -398,7 +406,7 @@ export default function InvoicePDFImport({ peptides, onImportComplete }) {
                             className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
                             <option value="">-- Select Product --</option>
-                            {uniqueProducts.map(product => (
+                            {productOptions.map(product => (
                               <option key={product.peptideId} value={product.peptideId}>
                                 {product.label} {product.sub && `(${product.sub})`}
                               </option>

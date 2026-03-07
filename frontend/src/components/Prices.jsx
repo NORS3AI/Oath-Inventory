@@ -150,8 +150,8 @@ export default function Prices({ peptides }) {
                 {visibleColumns.map(column => (
                   <th
                     key={column.id}
-                    className={`px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[110px]
-                      ${column.id === 'product' ? 'text-left' : 'text-center'}
+                    className={`px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider
+                      ${column.id === 'product' ? 'text-left w-48' : 'text-center w-24'}
                     `}
                   >
                     {column.label}
@@ -180,17 +180,17 @@ export default function Prices({ peptides }) {
                       {visibleColumns.map(column => {
                         if (column.id === 'product') {
                           return (
-                            <td key={column.id} className="px-4 py-2">
-                              <div className="font-medium text-gray-900 dark:text-white">{product.label}</div>
+                            <td key={column.id} className="px-3 py-2 w-48">
+                              <div className="font-medium text-gray-900 dark:text-white truncate">{product.label}</div>
                               {product.sub && product.sub !== product.label && (
-                                <div className="text-xs text-gray-500 dark:text-gray-400">{product.sub}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{product.sub}</div>
                               )}
                             </td>
                           );
                         } else {
                           const colKey = getColumnKey(column.id);
                           return (
-                            <td key={column.id} className="px-2 py-1.5 text-center">
+                            <td key={column.id} className="px-1.5 py-1.5 text-center w-24">
                               <input
                                 type="text"
                                 inputMode="decimal"
@@ -198,7 +198,7 @@ export default function Prices({ peptides }) {
                                 onChange={e => handleChange(product.key, colKey, e.target.value)}
                                 onFocus={e => e.target.select()}
                                 placeholder="—"
-                                className="w-full text-center px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
+                                className="w-full text-center px-1.5 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
                               />
                             </td>
                           );
