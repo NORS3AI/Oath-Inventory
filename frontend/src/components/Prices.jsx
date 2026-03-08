@@ -101,18 +101,27 @@ export default function Prices({ peptides }) {
     // Build header line
     const headers = visibleColumns.map(col => col.label);
 
+    // Helper to get product display name for export (shows actual ID)
+    const getProductExportName = (product) => {
+      // If label is different from key, it means there's a nickname
+      if (product.label !== product.key) {
+        return `${product.label} (${product.key})`;
+      }
+      return product.key;
+    };
+
     // Calculate column widths based on content
     const columnWidths = headers.map((header, idx) => {
       const col = visibleColumns[idx];
       const maxContentWidth = Math.max(
         header.length,
         ...products.map(product => {
-          if (col.id === 'product') return product.label.length;
+          if (col.id === 'product') return getProductExportName(product).length;
           const colKey = getColumnKey(col.id);
           return (prices[product.key]?.[colKey] || '').toString().length;
         })
       );
-      return Math.min(maxContentWidth + 2, 40); // Max 40 chars per column
+      return Math.min(maxContentWidth + 2, 50); // Max 50 chars per column to accommodate longer names
     });
 
     // Helper to pad text
@@ -131,7 +140,7 @@ export default function Prices({ peptides }) {
       const row = visibleColumns.map((col, i) => {
         let value;
         if (col.id === 'product') {
-          value = product.label;
+          value = getProductExportName(product);
         } else {
           const colKey = getColumnKey(col.id);
           value = prices[product.key]?.[colKey] || '';
