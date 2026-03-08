@@ -108,7 +108,8 @@ export default function Prices({ peptides }) {
         header.length,
         ...products.map(product => {
           if (col.id === 'product') return product.label.length;
-          return (prices[product.key]?.[col.id] || '').toString().length;
+          const colKey = getColumnKey(col.id);
+          return (prices[product.key]?.[colKey] || '').toString().length;
         })
       );
       return Math.min(maxContentWidth + 2, 40); // Max 40 chars per column
@@ -132,7 +133,8 @@ export default function Prices({ peptides }) {
         if (col.id === 'product') {
           value = product.label;
         } else {
-          value = prices[product.key]?.[col.id] || '';
+          const colKey = getColumnKey(col.id);
+          value = prices[product.key]?.[colKey] || '';
         }
         return pad(value, columnWidths[i]);
       });
