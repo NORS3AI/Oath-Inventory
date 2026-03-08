@@ -121,33 +121,42 @@ export default function Prices({ peptides }) {
           return (prices[product.key]?.[colKey] || '').toString().length;
         })
       );
-      return Math.min(maxContentWidth + 2, 50); // Max 50 chars per column to accommodate longer names
+      return maxContentWidth + 2; // Add padding, no max limit
     });
 
-    // Helper to pad text
-    const pad = (text, width) => text.toString().padEnd(width, ' ');
+    // Helper to pad text (left-align for product, right-align for numbers)
+    const pad = (text, width, isNumeric = false) => {
+      const str = text.toString();
+      if (isNumeric && str !== '') {
+        return str.padStart(width, ' ');
+      }
+      return str.padEnd(width, ' ');
+    };
 
     // Build text output
     let textOutput = 'PRICING TABLE\n';
     textOutput += `Generated: ${new Date().toLocaleString()}\n\n`;
 
     // Header row
-    textOutput += headers.map((h, i) => pad(h, columnWidths[i])).join(' | ') + '\n';
-    textOutput += columnWidths.map(w => '-'.repeat(w)).join('-+-') + '\n';
+    textOutput += headers.map((h, i) => pad(h, columnWidths[i])).join('  ') + '\n';
+    textOutput += columnWidths.map(w => '='.repeat(w)).join('  ') + '\n';
 
     // Data rows
     products.forEach(product => {
       const row = visibleColumns.map((col, i) => {
         let value;
+        let isNumeric = false;
+
         if (col.id === 'product') {
           value = getProductExportName(product);
         } else {
           const colKey = getColumnKey(col.id);
           value = prices[product.key]?.[colKey] || '';
+          isNumeric = value !== ''; // Right-align non-empty price values
         }
-        return pad(value, columnWidths[i]);
+        return pad(value, columnWidths[i], isNumeric);
       });
-      textOutput += row.join(' | ') + '\n';
+      textOutput += row.join('  ') + '\n';
     });
 
     // Download as .txt file
