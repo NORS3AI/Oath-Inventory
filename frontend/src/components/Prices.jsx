@@ -106,8 +106,8 @@ export default function Prices({ peptides }) {
       const col = visibleColumns[idx];
       const maxContentWidth = Math.max(
         header.length,
-        ...sortedProducts.map(product => {
-          if (col.id === 'product') return product.displayName.length;
+        ...products.map(product => {
+          if (col.id === 'product') return product.label.length;
           return (prices[product.key]?.[col.id] || '').toString().length;
         })
       );
@@ -126,11 +126,11 @@ export default function Prices({ peptides }) {
     textOutput += columnWidths.map(w => '-'.repeat(w)).join('-+-') + '\n';
 
     // Data rows
-    sortedProducts.forEach(product => {
+    products.forEach(product => {
       const row = visibleColumns.map((col, i) => {
         let value;
         if (col.id === 'product') {
-          value = product.displayName;
+          value = product.label;
         } else {
           value = prices[product.key]?.[col.id] || '';
         }
