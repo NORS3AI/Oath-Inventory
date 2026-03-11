@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown, GitCompareArrows, ScanLine, DollarSign } from 'lucide-react';
+import { Package, Upload, CheckCircle, BarChart3, Moon, Sun, FileText, Tag, Settings, ArrowLeft, ArrowUpDown, GitCompareArrows, ScanLine, DollarSign, ClipboardList, Clock, AlertTriangle } from 'lucide-react';
 import { calculateStockStatus } from './utils/stockStatus';
 import { useInventory } from './hooks/useInventory';
 import { useDarkMode } from './hooks/useDarkMode';
@@ -13,6 +13,7 @@ import Reports from './components/Reports';
 import Labeling from './components/Labeling';
 import Compare from './components/Compare';
 import Prices from './components/Prices';
+import Daily from './components/Daily';
 import SettingsModal from './components/SettingsModal';
 import PatchNotesModal from './components/PatchNotesModal';
 import packageJson from '../package.json';
@@ -154,6 +155,12 @@ function App() {
               onClick={() => setActiveTab('compare')}
             />
             <NavButton
+              icon={<ClipboardList className="w-5 h-5" />}
+              label="Daily"
+              active={activeTab === 'daily'}
+              onClick={() => setActiveTab('daily')}
+            />
+            <NavButton
               icon={<Upload className="w-5 h-5" />}
               label="Import CSV"
               active={activeTab === 'import'}
@@ -188,6 +195,7 @@ function App() {
             {activeTab === 'reports' && <ReportsView peptides={peptides} orders={orders} thresholds={thresholds} />}
             {activeTab === 'prices' && <PricesView peptides={peptides} />}
             {activeTab === 'compare' && <CompareView peptides={peptides} />}
+            {activeTab === 'daily' && <DailyView />}
           </>
         )}
       </main>
@@ -235,6 +243,19 @@ function NavButton({ icon, label, active, onClick, badge }) {
 function DashboardView({ stats, peptides, thresholds, onNavigate }) {
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [detailSort, setDetailSort] = useState({ field: 'peptideId', direction: 'asc' });
+  const [urgentTasks, setUrgentTasks] = useState([]);
+
+  // Load urgent tasks
+  useEffect(() => {
+    const loadUrgentTasks = async () => {
+      const tasks = await db.tasks.getUrgent();
+      setUrgentTasks(tasks.slice(0, 5)); // Show top 5 urgent tasks
+    };
+    loadUrgentTasks();
+    // Refresh every minute
+    const interval = setInterval(loadUrgentTasks, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const STATUS_MAP = {
     OUT_OF_STOCK: { color: 'red', label: 'Out of Stock', action: 'Order Immediately' },
@@ -425,6 +446,80 @@ function DashboardView({ stats, peptides, thresholds, onNavigate }) {
           subtitle="Requires attention"
           icon={<Package className="w-8 h-8 text-orange-600 dark:text-orange-400" />}
         />
+      </div>
+
+      {/* Daily Tasks Activity Log */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <ClipboardList className="w-5 h-5" />
+            Daily Tasks
+          </h3>
+          <button
+            onClick={() => onNavigate('daily')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            Manage Tasks
+          </button>
+        </div>
+
+        {urgentTasks.length === 0 ? (
+          <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+            <p>No urgent tasks. Click "Manage Tasks" to create one.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {urgentTasks.map(task => {
+              const getTimeUntilExpiration = (expirationDate) => {
+                if (!expirationDate) return null;
+                const now = new Date();
+                const exp = new Date(expirationDate);
+                const diffMs = exp - now;
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+                if (diffMs < 0) return { text: 'Overdue', color: 'text-red-600 dark:text-red-400' };
+                if (diffHours < 1) return { text: 'Due now', color: 'text-red-600 dark:text-red-400' };
+                if (diffHours < 24) return { text: `${diffHours}h left`, color: 'text-orange-600 dark:text-orange-400' };
+                return { text: `${Math.floor(diffHours / 24)} days left`, color: 'text-yellow-600 dark:text-yellow-400' };
+              };
+
+              const timeInfo = getTimeUntilExpiration(task.expirationDate);
+              const getPriorityIcon = (priority) => {
+                if (priority === 'critical') return <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />;
+                return <Clock className="w-4 h-4 text-gray-400" />;
+              };
+
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => onNavigate('daily')}
+                  className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors border border-gray-200 dark:border-gray-600"
+                >
+                  {getPriorityIcon(task.priority)}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                      {task.title}
+                    </p>
+                    {timeInfo && (
+                      <p className={`text-xs ${timeInfo.color}`}>
+                        {timeInfo.text}
+                      </p>
+                    )}
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    task.priority === 'critical'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                      : task.priority === 'high'
+                      ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    {task.priority}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Getting Started or Actions */}
@@ -629,6 +724,10 @@ function StatCard({ title, value, subtitle, icon }) {
       </div>
     </div>
   );
+}
+
+function DailyView() {
+  return <Daily />;
 }
 
 export default App;
