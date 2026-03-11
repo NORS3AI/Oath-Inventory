@@ -43,6 +43,12 @@ const snapshotStore = localforage.createInstance({
   description: 'Daily inventory snapshots for comparison'
 });
 
+const taskStore = localforage.createInstance({
+  name: 'OathInventory',
+  storeName: 'tasks',
+  description: 'Daily and weekly task management with expiration dates'
+});
+
 /**
  * Database service for Oath Inventory System
  * Uses IndexedDB via localforage for client-side data persistence
@@ -476,6 +482,114 @@ export const db = {
     }
   },
 
+  // Task operations (for daily/weekly task management)
+  tasks: {
+    async getAll() {
+      const tasks = [];
+      await taskStore.iterate((value) => {
+        tasks.push(value);
+      });
+      return tasks.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+    },
+
+    async getAllActive() {
+      const tasks = [];
+      await taskStore.iterate((value) => {
+        if (!value.completed) {
+          tasks.push(value);
+        }
+      });
+      // Sort by urgency: critical first, then by expiration date
+      return tasks.sort((a, b) => {
+        // Critical tasks first
+        if (a.priority === 'critical' && b.priority !== 'critical') return -1;
+        if (b.priority === 'critical' && a.priority !== 'critical') return 1;
+
+        // Then by expiration date (soonest first)
+        const aExp = a.expirationDate ? new Date(a.expirationDate).getTime() : Infinity;
+        const bExp = b.expirationDate ? new Date(b.expirationDate).getTime() : Infinity;
+        return aExp - bExp;
+      });
+    },
+
+    async get(id) {
+      return await taskStore.getItem(id);
+    },
+
+    async create(taskData) {
+      const id = `task-${Date.now()}`;
+      const task = {
+        id,
+        title: taskData.title || '',
+        description: taskData.description || '',
+        type: taskData.type || 'daily', // 'daily' or 'weekly'
+        priority: taskData.priority || 'normal', // 'critical', 'high', 'normal', 'low'
+        expirationDate: taskData.expirationDate || null,
+        completed: false,
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await taskStore.setItem(id, task);
+      return task;
+    },
+
+    async update(id, updates) {
+      const existing = await taskStore.getItem(id);
+      if (!existing) throw new Error(`Task ${id} not found`);
+
+      const updated = {
+        ...existing,
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      await taskStore.setItem(id, updated);
+      return updated;
+    },
+
+    async complete(id) {
+      return await this.update(id, {
+        completed: true,
+        completedAt: new Date().toISOString()
+      });
+    },
+
+    async uncomplete(id) {
+      return await this.update(id, {
+        completed: false,
+        completedAt: null
+      });
+    },
+
+    async delete(id) {
+      return await taskStore.removeItem(id);
+    },
+
+    async clear() {
+      return await taskStore.clear();
+    },
+
+    // Get tasks that need attention (critical or expiring soon)
+    async getUrgent() {
+      const tasks = await this.getAllActive();
+      const now = new Date().getTime();
+      const oneDayMs = 24 * 60 * 60 * 1000;
+
+      return tasks.filter(task => {
+        // Critical priority
+        if (task.priority === 'critical') return true;
+
+        // Expiring within 24 hours
+        if (task.expirationDate) {
+          const expTime = new Date(task.expirationDate).getTime();
+          return expTime - now <= oneDayMs;
+        }
+
+        return false;
+      });
+    }
+  },
+
   // Utility operations
   async clearAll() {
     await peptideStore.clear();
@@ -485,6 +599,7 @@ export const db = {
     await transactionStore.clear();
     await velocityHistoryStore.clear();
     await snapshotStore.clear();
+    await taskStore.clear();
   },
 
   async exportData() {
@@ -494,6 +609,7 @@ export const db = {
     const settings = await this.settings.getAll();
     const transactions = await this.transactions.getAll();
     const snapshots = await this.snapshots.getAll();
+    const tasks = await this.tasks.getAll();
 
     // Export velocity history for all peptides
     const velocityHistory = {};
@@ -514,7 +630,8 @@ export const db = {
         settings,
         transactions,
         velocityHistory,
-        snapshots
+        snapshots,
+        tasks
       }
     };
   },
@@ -522,7 +639,7 @@ export const db = {
   async importData(exportedData) {
     if (!exportedData.data) throw new Error('Invalid export data format');
 
-    const { peptides, orders, labels, settings, transactions, velocityHistory, snapshots } = exportedData.data;
+    const { peptides, orders, labels, settings, transactions, velocityHistory, snapshots, tasks } = exportedData.data;
 
     // Import peptides
     if (peptides) {
@@ -571,6 +688,13 @@ export const db = {
     if (snapshots) {
       for (const snapshot of snapshots) {
         await this.snapshots.save(snapshot.label || snapshot.date, snapshot.data, snapshot.date);
+      }
+    }
+
+    // Import tasks
+    if (tasks) {
+      for (const task of tasks) {
+        await taskStore.setItem(task.id, task);
       }
     }
 
