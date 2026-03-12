@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { db } from '../lib/db';
-import { CheckCircle2, Circle, Clock, AlertTriangle, Plus, X, Calendar, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, AlertTriangle, Plus, X, Calendar, Trash2, FileText } from 'lucide-react';
+import Minutes from './Minutes';
 
 export default function Daily() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNewTask, setShowNewTask] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [showMinutes, setShowMinutes] = useState(false);
 
   // New task form state
   const [newTask, setNewTask] = useState({
@@ -161,13 +163,22 @@ export default function Daily() {
             Manage your daily and weekly tasks with expiration tracking
           </p>
         </div>
-        <button
-          onClick={() => setShowNewTask(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Task
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowMinutes(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            Team Minutes
+          </button>
+          <button
+            onClick={() => setShowNewTask(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Task
+          </button>
+        </div>
       </div>
 
       {/* New Task Form */}
@@ -466,6 +477,9 @@ export default function Daily() {
           </div>
         </div>
       )}
+
+      {/* Minutes Modal */}
+      {showMinutes && <Minutes onClose={() => setShowMinutes(false)} />}
     </div>
   );
 }
