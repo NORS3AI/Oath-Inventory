@@ -49,6 +49,12 @@ const taskStore = localforage.createInstance({
   description: 'Daily and weekly task management with expiration dates'
 });
 
+const minutesStore = localforage.createInstance({
+  name: 'OathInventory',
+  storeName: 'minutes',
+  description: 'Team meeting minutes and action items'
+});
+
 /**
  * Database service for Oath Inventory System
  * Uses IndexedDB via localforage for client-side data persistence
@@ -590,6 +596,58 @@ export const db = {
     }
   },
 
+  // Minutes operations (for team meeting minutes)
+  minutes: {
+    async getAll() {
+      const minutes = [];
+      await minutesStore.iterate((value) => {
+        minutes.push(value);
+      });
+      return minutes.sort((a, b) => new Date(b.meetingDate || 0) - new Date(a.meetingDate || 0));
+    },
+
+    async get(id) {
+      return await minutesStore.getItem(id);
+    },
+
+    async create(minuteData) {
+      const id = `meeting-${Date.now()}`;
+      const minute = {
+        id,
+        title: minuteData.title || '',
+        meetingDate: minuteData.meetingDate || new Date().toISOString(),
+        notes: minuteData.notes || '',
+        attendees: minuteData.attendees || [],
+        actionItems: minuteData.actionItems || [], // Array of { member: string, task: string, completed: boolean }
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await minutesStore.setItem(id, minute);
+      return minute;
+    },
+
+    async update(id, updates) {
+      const existing = await minutesStore.getItem(id);
+      if (!existing) throw new Error(`Meeting minute ${id} not found`);
+
+      const updated = {
+        ...existing,
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      await minutesStore.setItem(id, updated);
+      return updated;
+    },
+
+    async delete(id) {
+      return await minutesStore.removeItem(id);
+    },
+
+    async clear() {
+      return await minutesStore.clear();
+    }
+  },
+
   // Utility operations
   async clearAll() {
     await peptideStore.clear();
@@ -600,6 +658,7 @@ export const db = {
     await velocityHistoryStore.clear();
     await snapshotStore.clear();
     await taskStore.clear();
+    await minutesStore.clear();
   },
 
   async exportData() {
@@ -610,6 +669,7 @@ export const db = {
     const transactions = await this.transactions.getAll();
     const snapshots = await this.snapshots.getAll();
     const tasks = await this.tasks.getAll();
+    const minutes = await this.minutes.getAll();
 
     // Export velocity history for all peptides
     const velocityHistory = {};
@@ -631,7 +691,8 @@ export const db = {
         transactions,
         velocityHistory,
         snapshots,
-        tasks
+        tasks,
+        minutes
       }
     };
   },
@@ -639,7 +700,7 @@ export const db = {
   async importData(exportedData) {
     if (!exportedData.data) throw new Error('Invalid export data format');
 
-    const { peptides, orders, labels, settings, transactions, velocityHistory, snapshots, tasks } = exportedData.data;
+    const { peptides, orders, labels, settings, transactions, velocityHistory, snapshots, tasks, minutes } = exportedData.data;
 
     // Import peptides
     if (peptides) {
@@ -695,6 +756,13 @@ export const db = {
     if (tasks) {
       for (const task of tasks) {
         await taskStore.setItem(task.id, task);
+      }
+    }
+
+    // Import meeting minutes
+    if (minutes) {
+      for (const minute of minutes) {
+        await minutesStore.setItem(minute.id, minute);
       }
     }
 

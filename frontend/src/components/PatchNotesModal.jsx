@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X, Sparkles, Bug, Wrench, Rocket, Layers, Shield, Palette, Zap } from 'lucide-react';
 
 const PATCH_NOTES = [
+  { version: '0.0.138', date: '2026-03-12', title: 'Team Minutes: Password-protected meeting minutes system (password: 1337) - track meetings, notes, attendees, action items per team member, accessible from Daily tab' },
   { version: '0.0.137', date: '2026-03-11', title: 'Daily Tasks: Comprehensive task management system with daily/weekly tasks, expiration dates, priority levels, rich text notes, and urgent task activity log on Dashboard' },
   { version: '0.0.136', date: '2026-03-07', title: 'Prices Export Text: Plain text table export with aligned columns - download as .txt for easy copy/paste or conversion' },
   { version: '0.0.135', date: '2026-03-07', title: 'Prices Export CSV: Add instant CSV download button - bypasses print issues, export all pricing data to file for PDF conversion' },
