@@ -198,14 +198,26 @@ export default function Daily() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Description
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Description
+                </label>
+                <span className={`text-xs ${
+                  newTask.description.length > 9500
+                    ? 'text-red-600 dark:text-red-400 font-semibold'
+                    : newTask.description.length > 9000
+                    ? 'text-orange-600 dark:text-orange-400'
+                    : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {newTask.description.length} / 10,000
+                </span>
+              </div>
               <textarea
                 value={newTask.description}
                 onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                 placeholder="Add detailed notes, checklists, or context..."
                 rows={6}
+                maxLength={10000}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
               />
             </div>
@@ -314,12 +326,26 @@ export default function Daily() {
                             onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           />
-                          <textarea
-                            value={editingTask.description}
-                            onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
-                            rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                          />
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={`text-xs ${
+                                editingTask.description.length > 9500
+                                  ? 'text-red-600 dark:text-red-400 font-semibold'
+                                  : editingTask.description.length > 9000
+                                  ? 'text-orange-600 dark:text-orange-400'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }`}>
+                                {editingTask.description.length} / 10,000
+                              </span>
+                            </div>
+                            <textarea
+                              value={editingTask.description}
+                              onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
+                              rows={4}
+                              maxLength={10000}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                            />
+                          </div>
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleUpdateTask(task.id, editingTask)}
