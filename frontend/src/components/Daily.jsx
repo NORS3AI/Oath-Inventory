@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../lib/db';
-import { CheckCircle2, Circle, Clock, AlertTriangle, Plus, X, Calendar, Trash2, FileText } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, AlertTriangle, Plus, X, Calendar, Trash2, FileText, Download } from 'lucide-react';
 import Minutes from './Minutes';
 
 export default function Daily() {
@@ -100,6 +100,86 @@ export default function Daily() {
     }
   };
 
+  // Export tasks to text file for email
+  const handleExportTasks = () => {
+    const activeTasks = tasks.filter(t => !t.completed).sort((a, b) => {
+      if (a.priority === 'critical' && b.priority !== 'critical') return -1;
+      if (b.priority === 'critical' && a.priority !== 'critical') return 1;
+      const aExp = a.expirationDate ? new Date(a.expirationDate).getTime() : Infinity;
+      const bExp = b.expirationDate ? new Date(b.expirationDate).getTime() : Infinity;
+      return aExp - bExp;
+    });
+
+    const completedTasks = tasks.filter(t => t.completed).sort((a, b) =>
+      new Date(b.completedAt || 0) - new Date(a.completedAt || 0)
+    );
+
+    let output = 'DAILY TASKS REPORT\n';
+    output += `Generated: ${new Date().toLocaleString()}\n`;
+    output += `Total Tasks: ${tasks.length} (${activeTasks.length} active, ${completedTasks.length} completed)\n`;
+    output += '='.repeat(80) + '\n\n';
+
+    // Active Tasks
+    if (activeTasks.length > 0) {
+      output += 'ACTIVE TASKS\n';
+      output += '-'.repeat(80) + '\n\n';
+
+      activeTasks.forEach((task, index) => {
+        output += `${index + 1}. ${task.title}\n`;
+        output += `   Priority: ${task.priority.toUpperCase()} | Type: ${task.type}\n`;
+
+        if (task.expirationDate) {
+          const exp = new Date(task.expirationDate);
+          const now = new Date();
+          const diffMs = exp - now;
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+          const diffDays = Math.floor(diffHours / 24);
+
+          let timeInfo = '';
+          if (diffMs < 0) timeInfo = '⚠️ OVERDUE';
+          else if (diffHours < 1) timeInfo = '🔴 DUE NOW';
+          else if (diffHours < 24) timeInfo = `🟠 ${diffHours}h remaining`;
+          else timeInfo = `🟢 ${diffDays} days remaining`;
+
+          output += `   Due: ${exp.toLocaleString()} ${timeInfo}\n`;
+        }
+
+        if (task.description) {
+          output += `   Notes:\n`;
+          const lines = task.description.split('\n');
+          lines.forEach(line => {
+            output += `     ${line}\n`;
+          });
+        }
+        output += '\n';
+      });
+    } else {
+      output += 'No active tasks.\n\n';
+    }
+
+    // Completed Tasks
+    if (completedTasks.length > 0) {
+      output += '\nCOMPLETED TASKS\n';
+      output += '-'.repeat(80) + '\n\n';
+
+      completedTasks.forEach((task, index) => {
+        output += `${index + 1}. ✓ ${task.title}\n`;
+        output += `   Completed: ${new Date(task.completedAt).toLocaleString()}\n\n`;
+      });
+    }
+
+    // Download as .txt file
+    const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `daily-tasks-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Get priority badge color
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -164,6 +244,13 @@ export default function Daily() {
           </p>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={handleExportTasks}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Export
+          </button>
           <button
             onClick={() => setShowMinutes(true)}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
